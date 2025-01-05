@@ -57,31 +57,15 @@ export class TaiGerPortalServiceStack extends Stack {
       }
     );
 
-    STAGES.forEach(
-      ({
-        stageName,
+    STAGES.forEach(({ stageName, env, domainStage, isProd, secretName }) => {
+      const stage = new PipelineAppStage(this, `${stageName}-Stage`, {
         env,
+        stageName,
         domainStage,
         isProd,
-        mongodbUriSecretName,
-        mongoDBName,
-        externalS3BucketName,
-        internalMongodbS3BucketName,
-        origin,
-      }) => {
-        const stage = new PipelineAppStage(this, `${stageName}-Stage`, {
-          env,
-          stageName,
-          domainStage,
-          isProd,
-          mongodbUriSecretName,
-          mongoDBName,
-          externalS3BucketName,
-          internalMongodbS3BucketName,
-          origin,
-        });
-        pipeline.addStage(stage);
-      }
-    );
+        secretName,
+      });
+      pipeline.addStage(stage);
+    });
   }
 }

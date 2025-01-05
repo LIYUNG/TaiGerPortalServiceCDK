@@ -7,11 +7,7 @@ interface DeploymentkProps extends StageProps {
   stageName: string;
   domainStage: string;
   isProd: boolean;
-  mongodbUriSecretName: string;
-  mongoDBName: string;
-  externalS3BucketName: string;
-  internalMongodbS3BucketName: string;
-  origin: string;
+  secretName: string;
 }
 
 export class PipelineAppStage extends Stage {
@@ -26,9 +22,7 @@ export class PipelineAppStage extends Stage {
         stageName: props.stageName,
         domainStage: props.domainStage,
         isProd: props.isProd,
-        mongodbUriSecretName: props.mongodbUriSecretName,
-        mongoDBName: props.mongoDBName,
-        externalS3BucketName: props.externalS3BucketName,
+        secretName: props.secretName,
       }
     );
   }
