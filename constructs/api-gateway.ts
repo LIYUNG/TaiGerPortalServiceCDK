@@ -25,7 +25,7 @@ export class ApiGatewayCustomDomainConstruct extends Construct {
     super(scope, id);
 
     // Step 1: Get your existing Route 53 Hosted Zone
-    const hostedZone = route53.HostedZone.fromLookup(this, 'MyHostedZone', {
+    const hostedZone = route53.HostedZone.fromLookup(this, `HostedZone`, {
       domainName: 'taigerconsultancy-portal.com', // Replace with your domain name
     });
 
@@ -61,7 +61,7 @@ export class ApiGatewayCustomDomainConstruct extends Construct {
       zone: hostedZone,
       recordName: 'api', // Subdomain name for your custom domain
       target: route53.RecordTarget.fromAlias(
-        new route53Targets.ApiGateway(domainName)
+        new route53Targets.ApiGatewayDomain(domainName)
       ),
     });
   }

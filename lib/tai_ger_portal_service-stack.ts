@@ -9,6 +9,7 @@ import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
 import {
+  APP_NAME_TAIGER_SERVICE,
   GITHUB_OWNER,
   GITHUB_PACKAGE_BRANCH,
   GITHUB_REPO,
@@ -32,25 +33,29 @@ export class TaiGerPortalServiceStack extends Stack {
     );
 
     // Create the high-level CodePipeline
-    const pipeline = new CodePipeline(this, 'Pipeline', {
-      pipelineName: 'TaiGerPortalInfraPipeline',
-      synth: new ShellStep('Synth', {
-        input: source,
-        commands: ['npm ci', 'npm run build', 'npx cdk synth'],
-      }),
-      codeBuildDefaults: {
-        rolePolicy: [
-          new PolicyStatement({
-            actions: [
-              'route53:ListHostedZonesByName',
-              'route53:GetHostedZone',
-              'route53:ListHostedZones',
-            ],
-            resources: ['*'],
-          }),
-        ],
-      },
-    });
+    const pipeline = new CodePipeline(
+      this,
+      `${APP_NAME_TAIGER_SERVICE}Pipeline`,
+      {
+        pipelineName: `${APP_NAME_TAIGER_SERVICE}Pipeline`,
+        synth: new ShellStep('Synth', {
+          input: source,
+          commands: ['npm ci', 'npm run build', 'npx cdk synth'],
+        }),
+        codeBuildDefaults: {
+          rolePolicy: [
+            new PolicyStatement({
+              actions: [
+                'route53:ListHostedZonesByName',
+                'route53:GetHostedZone',
+                'route53:ListHostedZones',
+              ],
+              resources: ['*'],
+            }),
+          ],
+        },
+      }
+    );
 
     STAGES.forEach(
       ({
