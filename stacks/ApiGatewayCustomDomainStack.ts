@@ -1,19 +1,19 @@
 import * as cdk from 'aws-cdk-lib';
 import { ApiGatewayCustomDomainConstruct } from '../constructs';
+import { Construct } from 'constructs';
 
 interface ApiGatewayCustomDomainProps extends cdk.StackProps {
   stageName: string;
   domainStage: string;
   isProd: boolean;
-  mongodbUrisecretArn: string;
-  mongoDBName: string;
-  externalS3BucketName: string;
-  internalMongodbS3BucketName: string;
-  origin: string;
 }
 
 export class ApiGatewayCustomDomainStack extends cdk.Stack {
-  constructor(scope: cdk.App, id: string, props: ApiGatewayCustomDomainProps) {
+  constructor(
+    scope: Construct,
+    id: string,
+    props: ApiGatewayCustomDomainProps
+  ) {
     super(scope, id, props);
 
     if (!props.env?.region) {
@@ -24,11 +24,6 @@ export class ApiGatewayCustomDomainStack extends cdk.Stack {
       stageName: props.stageName,
       isProd: props.isProd,
       region: props.env.region,
-      mongodbUrisecretArn: props.mongodbUrisecretArn,
-      mongoDBName: props.mongoDBName,
-      externalS3BucketName: props.externalS3BucketName,
-      internalMongodbS3BucketName: props.internalMongodbS3BucketName,
-      origin: props.origin,
     });
   }
 }
