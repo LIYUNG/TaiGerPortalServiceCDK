@@ -18,12 +18,14 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import { Construct } from 'constructs';
 import * as servicediscovery from 'aws-cdk-lib/aws-servicediscovery';
+import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 
 interface EcsFargateWithSsmStackProps extends StackProps {
   stageName: string;
   domainStage: string;
   isProd: boolean;
   secretArn: string;
+  buildProject: codebuild.Project;
 }
 
 export class EcsFargateWithSsmStack extends Stack {
@@ -187,6 +189,13 @@ export class EcsFargateWithSsmStack extends Stack {
         name: 'taiGerPortalService', // The service name used for discovery
       },
     });
+
+    props.buildProject.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ecs:UpdateService'],
+        resources: [ecsService.serviceArn],
+      })
+    );
 
     const nlb = new aws_elasticloadbalancingv2.NetworkLoadBalancer(
       this,

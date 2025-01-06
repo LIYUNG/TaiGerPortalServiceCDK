@@ -10,13 +10,15 @@ import { Construct } from 'constructs';
 
 import {
   APP_NAME_TAIGER_SERVICE,
+  AWS_ACCOUNT,
   GITHUB_OWNER,
   GITHUB_PACKAGE_BRANCH,
   GITHUB_REPO,
   GITHUB_TOKEN,
 } from '../configuration/dependencies';
 import { PipelineAppStage } from './app-stage';
-import { STAGES } from '../constants';
+import { Region, STAGES } from '../constants';
+import { EcrBuildStage } from './ecr-build-stage';
 
 export class TaiGerPortalServiceStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -57,6 +59,10 @@ export class TaiGerPortalServiceStack extends Stack {
       }
     );
 
+    const buidlStage = new EcrBuildStage(this, `ECRBuild-Stage`, {
+      env: { region: Region.IAD, account: AWS_ACCOUNT },
+    });
+    pipeline.addStage(buidlStage);
     STAGES.forEach(({ stageName, env, domainStage, isProd, secretArn }) => {
       const stage = new PipelineAppStage(this, `${stageName}-Stage`, {
         env,
@@ -64,6 +70,7 @@ export class TaiGerPortalServiceStack extends Stack {
         domainStage,
         isProd,
         secretArn,
+        buildProject: buidlStage.buildProject,
       });
       pipeline.addStage(stage);
     });
