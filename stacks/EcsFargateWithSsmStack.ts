@@ -46,7 +46,6 @@ export class EcsFargateWithSsmStack extends Stack {
     });
 
     // Step 2: ECS Cluster
-
     const cluster = new ecs.Cluster(this, 'EcsCluster', {
       vpc,
     });
@@ -61,7 +60,6 @@ export class EcsFargateWithSsmStack extends Stack {
       }
     );
 
-    // Step 4: Task Definition with SSM Access
     const taskDefinition = new ecs.FargateTaskDefinition(
       this,
       `TaskDef-${props.stageName}`,
@@ -71,23 +69,20 @@ export class EcsFargateWithSsmStack extends Stack {
       }
     );
 
-    // Grant ECS Task Role permissions to read SSM parameters
-    taskDefinition.addToTaskRolePolicy(
-      new iam.PolicyStatement({
-        actions: [
-          'ssm:GetParameter',
-          'ssm:GetParameters',
-          'ssm:GetParameterHistory',
-        ],
-        // resources: [parameter1.parameterArn, parameter2.parameterArn],
-        resources: ['*'],
-      })
-    );
-
     const secret = aws_secretsmanager.Secret.fromSecretCompleteArn(
       this,
       'MySecret',
       props.secretArn
+    );
+
+    // Grant ECS Task Role permissions to read Secret Manager
+    taskDefinition.addToTaskRolePolicy(
+      new iam.PolicyStatement({
+        actions: [
+          'secretsmanager:GetSecretValue', // Required to fetch secrets
+        ],
+        resources: [secret.secretArn], // Allow access to the specific secret
+      })
     );
 
     // Step 5: Add Container to Task Definition
