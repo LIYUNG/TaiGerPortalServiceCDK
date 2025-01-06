@@ -5,7 +5,7 @@ interface ApiGatewayCustomDomainProps extends cdk.StackProps {
   stageName: string;
   domainStage: string;
   isProd: boolean;
-  mongodbUriSecretName: string;
+  mongodbUrisecretArn: string;
   mongoDBName: string;
   externalS3BucketName: string;
   internalMongodbS3BucketName: string;
@@ -20,11 +20,11 @@ export class ApiGatewayCustomDomainStack extends cdk.Stack {
       throw new Error('Region is required');
     }
 
-    new ApiGatewayCustomDomainConstruct(this, `CronJobs-${props.stageName}`, {
+    new ApiGatewayCustomDomainConstruct(this, `ApiGateway-${props.stageName}`, {
       stageName: props.stageName,
       isProd: props.isProd,
       region: props.env.region,
-      mongodbUriSecretName: props.mongodbUriSecretName,
+      mongodbUrisecretArn: props.mongodbUrisecretArn,
       mongoDBName: props.mongoDBName,
       externalS3BucketName: props.externalS3BucketName,
       internalMongodbS3BucketName: props.internalMongodbS3BucketName,

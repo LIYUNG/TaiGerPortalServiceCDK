@@ -57,13 +57,13 @@ export class TaiGerPortalServiceStack extends Stack {
       }
     );
 
-    STAGES.forEach(({ stageName, env, domainStage, isProd, secretName }) => {
+    STAGES.forEach(({ stageName, env, domainStage, isProd, secretArn }) => {
       const stage = new PipelineAppStage(this, `${stageName}-Stage`, {
         env,
         stageName,
         domainStage,
         isProd,
-        secretName,
+        secretArn,
       });
       pipeline.addStage(stage);
     });

@@ -9,7 +9,7 @@ export interface ApiGatewayCustomDomainProps {
   stageName: string;
   isProd: boolean;
   region: string;
-  mongodbUriSecretName: string;
+  mongodbUrisecretArn: string;
   mongoDBName: string;
   externalS3BucketName: string;
   internalMongodbS3BucketName: string;

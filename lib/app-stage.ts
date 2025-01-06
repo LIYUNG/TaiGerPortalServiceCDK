@@ -7,7 +7,7 @@ interface DeploymentkProps extends StageProps {
   stageName: string;
   domainStage: string;
   isProd: boolean;
-  secretName: string;
+  secretArn: string;
 }
 
 export class PipelineAppStage extends Stage {
@@ -22,7 +22,7 @@ export class PipelineAppStage extends Stage {
         stageName: props.stageName,
         domainStage: props.domainStage,
         isProd: props.isProd,
-        secretName: props.secretName,
+        secretArn: props.secretArn,
       }
     );
   }
