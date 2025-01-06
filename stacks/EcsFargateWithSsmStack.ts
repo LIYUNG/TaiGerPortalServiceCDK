@@ -81,7 +81,7 @@ export class EcsFargateWithSsmStack extends Stack {
         actions: [
           'secretsmanager:GetSecretValue', // Required to fetch secrets
         ],
-        resources: [secret.secretArn], // Allow access to the specific secret
+        resources: [secret.secretFullArn ?? secret.secretArn], // Allow access to the specific secret
       })
     );
 

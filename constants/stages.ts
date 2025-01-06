@@ -17,7 +17,7 @@ export const STAGES = [
     env: { region: Region.IAD, account: AWS_ACCOUNT },
     isProd: false,
     domainStage: DomainStage.Beta,
-    secretArn: `arn:aws:secretsmanager:${Region}:${AWS_ACCOUNT}:secret:beta/taiger/portal/service/env-486S9W`,
+    secretArn: `arn:aws:secretsmanager:${Region.IAD}:${AWS_ACCOUNT}:secret:beta/taiger/portal/service/env-486S9W`,
   },
   // {
   //     stageName: Stage.Prod_NA,
