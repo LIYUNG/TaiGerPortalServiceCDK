@@ -65,7 +65,7 @@ export class TaiGerPortalServiceStack extends Stack {
         `docker push ${ecrRepo.repositoryUri}`, // Push the Docker image to ECR
       ],
       buildEnvironment: {
-        buildImage: LinuxBuildImage.AMAZON_LINUX_2_4,
+        buildImage: LinuxBuildImage.AMAZON_LINUX_2_ARM_3, // make sure it matches the requested image platform.
         privileged: true,
       },
     });
