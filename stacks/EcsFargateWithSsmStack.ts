@@ -47,6 +47,16 @@ export class EcsFargateWithSsmStack extends Stack {
       maxAzs: 2,
     });
 
+    const securityGroup = new ec2.SecurityGroup(
+      this,
+      'EcsFargateSecurityGroup',
+      {
+        vpc,
+        allowAllOutbound: true, // You can specify more specific rules if needed
+        securityGroupName: 'EcsFargateSecurityGroup',
+      }
+    );
+
     // Step 2: ECS Cluster
     const cluster = new ecs.Cluster(this, 'EcsCluster', {
       vpc,
@@ -190,10 +200,12 @@ export class EcsFargateWithSsmStack extends Stack {
       taskDefinition,
       desiredCount: 1,
       serviceName: 'taiGerPortalService',
+      securityGroups: [securityGroup],
       cloudMapOptions: {
         cloudMapNamespace: namespace,
         name: 'taiGerPortalService', // The service name used for discovery
       },
+      assignPublicIp: false, // Disable public IP as the task is in a private subnet
     });
 
     const nlb = new aws_elasticloadbalancingv2.NetworkLoadBalancer(
