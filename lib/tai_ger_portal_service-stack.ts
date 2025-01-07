@@ -60,7 +60,7 @@ export class TaiGerPortalServiceStack extends Stack {
       primaryOutputDirectory: './api',
       commands: [
         'cd api', // Navigate to the API directory
-        '$(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)', // Log in to ECR
+        'aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com', // Log in to ECR
         `docker build --platform linux/arm64 -t ${ecrRepo.repositoryUri} .`, // Build the Docker image
         `docker push ${ecrRepo.repositoryUri}`, // Push the Docker image to ECR
       ],
