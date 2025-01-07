@@ -1,4 +1,4 @@
-import { SecretValue, Stack, StackProps } from 'aws-cdk-lib';
+import { CfnOutput, SecretValue, Stack, StackProps } from 'aws-cdk-lib';
 import {
   CodePipeline,
   CodePipelineSource,
@@ -52,6 +52,12 @@ export class TaiGerPortalServiceStack extends Stack {
     // Step 1: Create an ECR repository
     const ecrRepo = new Repository(this, 'MyEcrRepo', {
       repositoryName: 'taiger-portal-service-repo',
+    });
+
+    // Export repository URI as output
+    new CfnOutput(this, 'EcrRepoUri', {
+      value: ecrRepo.repositoryUri,
+      exportName: 'EcrRepoUri',
     });
 
     // TODO run docker comment.
@@ -121,7 +127,6 @@ export class TaiGerPortalServiceStack extends Stack {
         domainStage,
         isProd,
         secretArn,
-        ecrRepo,
       });
       pipeline.addStage(stage);
     });

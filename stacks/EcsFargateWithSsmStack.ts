@@ -2,6 +2,7 @@ import {
   aws_elasticloadbalancingv2,
   aws_secretsmanager,
   Duration,
+  Fn,
   RemovalPolicy,
   SecretValue,
   Stack,
@@ -25,7 +26,6 @@ interface EcsFargateWithSsmStackProps extends StackProps {
   domainStage: string;
   isProd: boolean;
   secretArn: string;
-  ecrRepo: ecr.Repository;
 }
 
 export class EcsFargateWithSsmStack extends Stack {
@@ -87,11 +87,17 @@ export class EcsFargateWithSsmStack extends Stack {
       })
     );
 
+    const ecrRepo = ecr.Repository.fromRepositoryName(
+      this,
+      'ImportedEcrRepo',
+      Fn.importValue('EcrRepoUri')
+    );
+
     // Step 5: Add Container to Task Definition
     const container = taskDefinition.addContainer(
       `TaiGerPortalServiceContainer-${props.stageName}`,
       {
-        image: ecs.ContainerImage.fromEcrRepository(props.ecrRepo, 'latest'), // Replace with your Node.js app image
+        image: ecs.ContainerImage.fromEcrRepository(ecrRepo, 'latest'), // Replace with your Node.js app image
         logging: new ecs.AwsLogDriver({
           streamPrefix: 'taiger-portal-service',
         }),

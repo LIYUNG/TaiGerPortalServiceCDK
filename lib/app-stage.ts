@@ -11,7 +11,6 @@ interface DeploymentProps extends StageProps {
   domainStage: string;
   isProd: boolean;
   secretArn: string;
-  ecrRepo: Repository;
 }
 
 export class PipelineAppStage extends Stage {
@@ -27,7 +26,6 @@ export class PipelineAppStage extends Stage {
         domainStage: props.domainStage,
         isProd: props.isProd,
         secretArn: props.secretArn,
-        ecrRepo: props.ecrRepo,
       }
     );
 
