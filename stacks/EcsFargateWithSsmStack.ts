@@ -86,7 +86,7 @@ export class EcsFargateWithSsmStack extends Stack {
       'MySecret',
       props.secretArn
     );
-
+    console.log(secret.secretFullArn);
     // Grant ECS Task Role permissions to read Secret Manager
     taskDefinition.addToTaskRolePolicy(
       new iam.PolicyStatement({

@@ -85,7 +85,7 @@ export class TaiGerPortalServiceStack extends Stack {
 
     // Export repository URI as output
     new CfnOutput(this, 'EcrRepoUri', {
-      value: ecrRepo.repositoryUri,
+      value: ecrRepo.repositoryName,
       exportName: 'EcrRepoUri',
     });
 
