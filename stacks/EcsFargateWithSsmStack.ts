@@ -214,22 +214,26 @@ export class EcsFargateWithSsmStack extends Stack {
     });
 
     const certificate = new certmgr.Certificate(this, 'ApiCertificate', {
-      domainName: `${'test'}.taigerconsultancy-portal.com`, // Replace with your subdomain
+      domainName: `${props.domainStage}.api.taigerconsultancy-portal.com`, // Replace with your subdomain
       validation: certmgr.CertificateValidation.fromDns(hostedZone),
     });
 
     const domainName = new apigateway.DomainName(this, 'CustomDomain', {
-      domainName: `${'test'}.taigerconsultancy-portal.com`, // Replace with your custom subdomain
+      domainName: `${props.domainStage}.api.taigerconsultancy-portal.com`, // Replace with your custom subdomain
       certificate,
     });
 
-    const api = new apigateway.RestApi(this, 'MyApi', {
-      restApiName: 'My API',
-      description: 'API for my application',
-      deployOptions: {
-        stageName: 'prod',
-      },
-    });
+    const api = new apigateway.RestApi(
+      this,
+      `TaiGerPortalService-${props.domainStage}`,
+      {
+        restApiName: `TaiGer Portal Service - ${props.domainStage}`,
+        description: `API for TaiGer Portal - ${props.domainStage}`,
+        deployOptions: {
+          stageName: props.domainStage,
+        },
+      }
+    );
 
     const apiResource = api.root.addResource('api');
     // Check if `cloudMapService` is available before using it
@@ -238,7 +242,7 @@ export class EcsFargateWithSsmStack extends Stack {
         'ANY',
         new apigateway.Integration({
           type: apigateway.IntegrationType.HTTP,
-          uri: `http://${ecsService.cloudMapService.serviceName}.taigerconsultancy.local`, // Cloud Map service URL
+          uri: `http://${nlb.loadBalancerDnsName}`, // use NLB instead
           integrationHttpMethod: 'GET',
           options: {
             connectionType: apigateway.ConnectionType.VPC_LINK,
@@ -258,7 +262,7 @@ export class EcsFargateWithSsmStack extends Stack {
     });
 
     // Step 6: Create Route 53 Record to point to the API Gateway
-    new route53.ARecord(this, 'ApiGatewayRecord', {
+    new route53.ARecord(this, `ApiGatewayRecord-${props.domainStage}`, {
       zone: hostedZone,
       recordName: 'api', // Subdomain name for your custom domain
       target: route53.RecordTarget.fromAlias(
