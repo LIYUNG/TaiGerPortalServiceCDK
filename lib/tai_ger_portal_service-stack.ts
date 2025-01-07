@@ -69,8 +69,6 @@ export class TaiGerPortalServiceStack extends Stack {
         privileged: true,
       },
     });
-    // Grant CodeBuild permission to interact with ECR
-    ecrRepo.grantPullPush(prebuild.role!);
 
     const pipelineSourceBuildStep = new CodeBuildStep('Synth', {
       input: sourceInfra,
@@ -118,5 +116,9 @@ export class TaiGerPortalServiceStack extends Stack {
       });
       pipeline.addStage(stage);
     });
+
+    pipeline.buildPipeline();
+    // Grant CodeBuild permission to interact with ECR
+    ecrRepo.grantPullPush(prebuild.grantPrincipal);
   }
 }
