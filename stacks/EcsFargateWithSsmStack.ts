@@ -25,6 +25,7 @@ interface EcsFargateWithSsmStackProps extends StackProps {
   domainStage: string;
   isProd: boolean;
   secretArn: string;
+  ecrRepo: ecr.Repository;
 }
 
 export class EcsFargateWithSsmStack extends Stack {
@@ -86,177 +87,177 @@ export class EcsFargateWithSsmStack extends Stack {
       })
     );
 
-    // // Step 5: Add Container to Task Definition
-    // const container = taskDefinition.addContainer(
-    //   `TaiGerPortalServiceContainer-${props.stageName}`,
-    //   {
-    //     image: ecs.ContainerImage.fromRegistry('node:18'), // Replace with your Node.js app image
-    //     logging: new ecs.AwsLogDriver({
-    //       streamPrefix: 'taiger-portal-service',
-    //     }),
-    //     secrets: {
-    //       // Add SSM parameters as environment variables
-    //       API_ORIGIN: ecs.Secret.fromSecretsManager(secret, 'API_ORIGIN'),
-    //       JWT_SECRET: ecs.Secret.fromSecretsManager(secret, 'JWT_SECRET'),
-    //       HTTPS_PORT: ecs.Secret.fromSecretsManager(secret, 'HTTPS_PORT'),
-    //       JWT_EXPIRE: ecs.Secret.fromSecretsManager(secret, 'JWT_EXPIRE'),
-    //       MONGODB_URI: ecs.Secret.fromSecretsManager(secret, 'MONGODB_URI'),
-    //       PORT: ecs.Secret.fromSecretsManager(secret, 'PORT'),
-    //       PROGRAMS_CACHE: ecs.Secret.fromSecretsManager(
-    //         secret,
-    //         'PROGRAMS_CACHE'
-    //       ),
-    //       ESCALATION_DEADLINE_DAYS_TRIGGER: ecs.Secret.fromSecretsManager(
-    //         secret,
-    //         'ESCALATION_DEADLINE_DAYS_TRIGGER'
-    //       ),
-    //       SMTP_HOST: ecs.Secret.fromSecretsManager(secret, 'SMTP_HOST'),
-    //       SMTP_PORT: ecs.Secret.fromSecretsManager(secret, 'SMTP_PORT'),
-    //       SMTP_USERNAME: ecs.Secret.fromSecretsManager(secret, 'SMTP_USERNAME'),
-    //       SMTP_PASSWORD: ecs.Secret.fromSecretsManager(secret, 'SMTP_PASSWORD'),
-    //       ORIGIN: ecs.Secret.fromSecretsManager(secret, 'ORIGIN'),
-    //       CLEAN_UP_SCHEDULE: ecs.Secret.fromSecretsManager(
-    //         secret,
-    //         'CLEAN_UP_SCHEDULE'
-    //       ),
-    //       WEEKLY_TASKS_REMINDER_SCHEDULE: ecs.Secret.fromSecretsManager(
-    //         secret,
-    //         'WEEKLY_TASKS_REMINDER_SCHEDULE'
-    //       ),
-    //       DAILY_TASKS_REMINDER_SCHEDULE: ecs.Secret.fromSecretsManager(
-    //         secret,
-    //         'DAILY_TASKS_REMINDER_SCHEDULE'
-    //       ),
-    //       COURSE_SELECTION_TASKS_REMINDER_JUNE_SCHEDULE:
-    //         ecs.Secret.fromSecretsManager(
-    //           secret,
-    //           'COURSE_SELECTION_TASKS_REMINDER_JUNE_SCHEDULE'
-    //         ),
-    //       COURSE_SELECTION_TASKS_REMINDER_JULY_SCHEDULE:
-    //         ecs.Secret.fromSecretsManager(
-    //           secret,
-    //           'COURSE_SELECTION_TASKS_REMINDER_JULY_SCHEDULE'
-    //         ),
-    //       COURSE_SELECTION_TASKS_REMINDER_NOVEMBER_SCHEDULE:
-    //         ecs.Secret.fromSecretsManager(
-    //           secret,
-    //           'COURSE_SELECTION_TASKS_REMINDER_NOVEMBER_SCHEDULE'
-    //         ),
-    //       COURSE_SELECTION_TASKS_REMINDER_DECEMBER_SCHEDULE:
-    //         ecs.Secret.fromSecretsManager(
-    //           secret,
-    //           'COURSE_SELECTION_TASKS_REMINDER_DECEMBER_SCHEDULE'
-    //         ),
-    //       UPLOAD_PATH: ecs.Secret.fromSecretsManager(secret, 'UPLOAD_PATH'),
-    //       AWS_S3_PUBLIC_BUCKET: ecs.Secret.fromSecretsManager(
-    //         secret,
-    //         'AWS_S3_PUBLIC_BUCKET'
-    //       ),
-    //       AWS_S3_PUBLIC_BUCKET_NAME: ecs.Secret.fromSecretsManager(
-    //         secret,
-    //         'AWS_S3_PUBLIC_BUCKET_NAME'
-    //       ),
-    //       AWS_S3_DATAPIPELINE_TENFOLDAI_SNAPSHOT: ecs.Secret.fromSecretsManager(
-    //         secret,
-    //         'AWS_S3_DATAPIPELINE_TENFOLDAI_SNAPSHOT'
-    //       ),
-    //       AWS_S3_BUCKET_NAME: ecs.Secret.fromSecretsManager(
-    //         secret,
-    //         'AWS_S3_BUCKET_NAME'
-    //       ),
-    //       AWS_REGION: ecs.Secret.fromSecretsManager(secret, 'AWS_REGION'),
-    //       OPENAI_API_KEY: ecs.Secret.fromSecretsManager(
-    //         secret,
-    //         'OPENAI_API_KEY'
-    //       ),
-    //     },
-    //   }
-    // );
+    // Step 5: Add Container to Task Definition
+    const container = taskDefinition.addContainer(
+      `TaiGerPortalServiceContainer-${props.stageName}`,
+      {
+        image: ecs.ContainerImage.fromEcrRepository(props.ecrRepo, 'latest'), // Replace with your Node.js app image
+        logging: new ecs.AwsLogDriver({
+          streamPrefix: 'taiger-portal-service',
+        }),
+        secrets: {
+          // Add SSM parameters as environment variables
+          API_ORIGIN: ecs.Secret.fromSecretsManager(secret, 'API_ORIGIN'),
+          JWT_SECRET: ecs.Secret.fromSecretsManager(secret, 'JWT_SECRET'),
+          HTTPS_PORT: ecs.Secret.fromSecretsManager(secret, 'HTTPS_PORT'),
+          JWT_EXPIRE: ecs.Secret.fromSecretsManager(secret, 'JWT_EXPIRE'),
+          MONGODB_URI: ecs.Secret.fromSecretsManager(secret, 'MONGODB_URI'),
+          PORT: ecs.Secret.fromSecretsManager(secret, 'PORT'),
+          PROGRAMS_CACHE: ecs.Secret.fromSecretsManager(
+            secret,
+            'PROGRAMS_CACHE'
+          ),
+          ESCALATION_DEADLINE_DAYS_TRIGGER: ecs.Secret.fromSecretsManager(
+            secret,
+            'ESCALATION_DEADLINE_DAYS_TRIGGER'
+          ),
+          SMTP_HOST: ecs.Secret.fromSecretsManager(secret, 'SMTP_HOST'),
+          SMTP_PORT: ecs.Secret.fromSecretsManager(secret, 'SMTP_PORT'),
+          SMTP_USERNAME: ecs.Secret.fromSecretsManager(secret, 'SMTP_USERNAME'),
+          SMTP_PASSWORD: ecs.Secret.fromSecretsManager(secret, 'SMTP_PASSWORD'),
+          ORIGIN: ecs.Secret.fromSecretsManager(secret, 'ORIGIN'),
+          CLEAN_UP_SCHEDULE: ecs.Secret.fromSecretsManager(
+            secret,
+            'CLEAN_UP_SCHEDULE'
+          ),
+          WEEKLY_TASKS_REMINDER_SCHEDULE: ecs.Secret.fromSecretsManager(
+            secret,
+            'WEEKLY_TASKS_REMINDER_SCHEDULE'
+          ),
+          DAILY_TASKS_REMINDER_SCHEDULE: ecs.Secret.fromSecretsManager(
+            secret,
+            'DAILY_TASKS_REMINDER_SCHEDULE'
+          ),
+          COURSE_SELECTION_TASKS_REMINDER_JUNE_SCHEDULE:
+            ecs.Secret.fromSecretsManager(
+              secret,
+              'COURSE_SELECTION_TASKS_REMINDER_JUNE_SCHEDULE'
+            ),
+          COURSE_SELECTION_TASKS_REMINDER_JULY_SCHEDULE:
+            ecs.Secret.fromSecretsManager(
+              secret,
+              'COURSE_SELECTION_TASKS_REMINDER_JULY_SCHEDULE'
+            ),
+          COURSE_SELECTION_TASKS_REMINDER_NOVEMBER_SCHEDULE:
+            ecs.Secret.fromSecretsManager(
+              secret,
+              'COURSE_SELECTION_TASKS_REMINDER_NOVEMBER_SCHEDULE'
+            ),
+          COURSE_SELECTION_TASKS_REMINDER_DECEMBER_SCHEDULE:
+            ecs.Secret.fromSecretsManager(
+              secret,
+              'COURSE_SELECTION_TASKS_REMINDER_DECEMBER_SCHEDULE'
+            ),
+          UPLOAD_PATH: ecs.Secret.fromSecretsManager(secret, 'UPLOAD_PATH'),
+          AWS_S3_PUBLIC_BUCKET: ecs.Secret.fromSecretsManager(
+            secret,
+            'AWS_S3_PUBLIC_BUCKET'
+          ),
+          AWS_S3_PUBLIC_BUCKET_NAME: ecs.Secret.fromSecretsManager(
+            secret,
+            'AWS_S3_PUBLIC_BUCKET_NAME'
+          ),
+          AWS_S3_DATAPIPELINE_TENFOLDAI_SNAPSHOT: ecs.Secret.fromSecretsManager(
+            secret,
+            'AWS_S3_DATAPIPELINE_TENFOLDAI_SNAPSHOT'
+          ),
+          AWS_S3_BUCKET_NAME: ecs.Secret.fromSecretsManager(
+            secret,
+            'AWS_S3_BUCKET_NAME'
+          ),
+          AWS_REGION: ecs.Secret.fromSecretsManager(secret, 'AWS_REGION'),
+          OPENAI_API_KEY: ecs.Secret.fromSecretsManager(
+            secret,
+            'OPENAI_API_KEY'
+          ),
+        },
+      }
+    );
 
-    // container.addPortMappings({
-    //   containerPort: 3000,
-    // });
+    container.addPortMappings({
+      containerPort: 80,
+    });
 
-    // // Step 6: Fargate Service
-    // const ecsService = new ecs.FargateService(this, 'FargateService', {
-    //   cluster,
-    //   taskDefinition,
-    //   desiredCount: 1,
-    //   serviceName: 'taiGerPortalService',
-    //   cloudMapOptions: {
-    //     cloudMapNamespace: namespace,
-    //     name: 'taiGerPortalService', // The service name used for discovery
-    //   },
-    // });
+    // Step 6: Fargate Service
+    const ecsService = new ecs.FargateService(this, 'FargateService', {
+      cluster,
+      taskDefinition,
+      desiredCount: 1,
+      serviceName: 'taiGerPortalService',
+      cloudMapOptions: {
+        cloudMapNamespace: namespace,
+        name: 'taiGerPortalService', // The service name used for discovery
+      },
+    });
 
-    // const nlb = new aws_elasticloadbalancingv2.NetworkLoadBalancer(
-    //   this,
-    //   'NLB',
-    //   {
-    //     vpc,
-    //   }
-    // );
+    const nlb = new aws_elasticloadbalancingv2.NetworkLoadBalancer(
+      this,
+      'NLB',
+      {
+        vpc,
+      }
+    );
 
-    // // Step 7: Create a VPC Link for Private Service Access
-    // const vpcLink = new apigateway.VpcLink(this, 'VpcLink', {
-    //   targets: [nlb], // Connect VPC Link to the ECS service via Cloud Map
-    // });
+    // Step 7: Create a VPC Link for Private Service Access
+    const vpcLink = new apigateway.VpcLink(this, 'VpcLink', {
+      targets: [nlb], // Connect VPC Link to the ECS service via Cloud Map
+    });
 
-    // const hostedZone = route53.HostedZone.fromLookup(this, `HostedZone`, {
-    //   domainName: 'taigerconsultancy-portal.com', // Replace with your domain name
-    // });
+    const hostedZone = route53.HostedZone.fromLookup(this, `HostedZone`, {
+      domainName: 'taigerconsultancy-portal.com', // Replace with your domain name
+    });
 
-    // const certificate = new certmgr.Certificate(this, 'ApiCertificate', {
-    //   domainName: `${'test'}.taigerconsultancy-portal.com`, // Replace with your subdomain
-    //   validation: certmgr.CertificateValidation.fromDns(hostedZone),
-    // });
+    const certificate = new certmgr.Certificate(this, 'ApiCertificate', {
+      domainName: `${'test'}.taigerconsultancy-portal.com`, // Replace with your subdomain
+      validation: certmgr.CertificateValidation.fromDns(hostedZone),
+    });
 
-    // const domainName = new apigateway.DomainName(this, 'CustomDomain', {
-    //   domainName: `${'test'}.taigerconsultancy-portal.com`, // Replace with your custom subdomain
-    //   certificate,
-    // });
+    const domainName = new apigateway.DomainName(this, 'CustomDomain', {
+      domainName: `${'test'}.taigerconsultancy-portal.com`, // Replace with your custom subdomain
+      certificate,
+    });
 
-    // const api = new apigateway.RestApi(this, 'MyApi', {
-    //   restApiName: 'My API',
-    //   description: 'API for my application',
-    //   deployOptions: {
-    //     stageName: 'prod',
-    //   },
-    // });
+    const api = new apigateway.RestApi(this, 'MyApi', {
+      restApiName: 'My API',
+      description: 'API for my application',
+      deployOptions: {
+        stageName: 'prod',
+      },
+    });
 
-    // const apiResource = api.root.addResource('api');
-    // // Check if `cloudMapService` is available before using it
-    // if (ecsService.cloudMapService) {
-    //   apiResource.addMethod(
-    //     'ANY',
-    //     new apigateway.Integration({
-    //       type: apigateway.IntegrationType.HTTP,
-    //       uri: `http://${ecsService.cloudMapService.serviceName}.taigerconsultancy.local`, // Cloud Map service URL
-    //       integrationHttpMethod: 'GET',
-    //       options: {
-    //         connectionType: apigateway.ConnectionType.VPC_LINK,
-    //         vpcLink: vpcLink,
-    //       },
-    //     })
-    //   );
-    // } else {
-    //   throw new Error(
-    //     'ECS service does not have a CloudMap service associated with it.'
-    //   );
-    // }
+    const apiResource = api.root.addResource('api');
+    // Check if `cloudMapService` is available before using it
+    if (ecsService.cloudMapService) {
+      apiResource.addMethod(
+        'ANY',
+        new apigateway.Integration({
+          type: apigateway.IntegrationType.HTTP,
+          uri: `http://${ecsService.cloudMapService.serviceName}.taigerconsultancy.local`, // Cloud Map service URL
+          integrationHttpMethod: 'GET',
+          options: {
+            connectionType: apigateway.ConnectionType.VPC_LINK,
+            vpcLink: vpcLink,
+          },
+        })
+      );
+    } else {
+      throw new Error(
+        'ECS service does not have a CloudMap service associated with it.'
+      );
+    }
 
-    // new apigateway.BasePathMapping(this, 'BasePathMapping', {
-    //   domainName: domainName,
-    //   restApi: api,
-    // });
+    new apigateway.BasePathMapping(this, 'BasePathMapping', {
+      domainName: domainName,
+      restApi: api,
+    });
 
-    // // Step 6: Create Route 53 Record to point to the API Gateway
-    // new route53.ARecord(this, 'ApiGatewayRecord', {
-    //   zone: hostedZone,
-    //   recordName: 'api', // Subdomain name for your custom domain
-    //   target: route53.RecordTarget.fromAlias(
-    //     new route53Targets.ApiGatewayDomain(domainName)
-    //   ),
-    // });
+    // Step 6: Create Route 53 Record to point to the API Gateway
+    new route53.ARecord(this, 'ApiGatewayRecord', {
+      zone: hostedZone,
+      recordName: 'api', // Subdomain name for your custom domain
+      target: route53.RecordTarget.fromAlias(
+        new route53Targets.ApiGatewayDomain(domainName)
+      ),
+    });
   }
 }

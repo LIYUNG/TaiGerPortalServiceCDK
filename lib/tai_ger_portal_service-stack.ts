@@ -121,6 +121,7 @@ export class TaiGerPortalServiceStack extends Stack {
         domainStage,
         isProd,
         secretArn,
+        ecrRepo,
       });
       pipeline.addStage(stage);
     });

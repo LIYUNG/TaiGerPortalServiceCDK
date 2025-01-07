@@ -3,6 +3,7 @@ import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import { Stage, StageProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { ApiGatewayCustomDomainStack } from '../stacks/ApiGatewayCustomDomainStack';
+import { Repository } from 'aws-cdk-lib/aws-ecr';
 // import { AuthStack } from "./authstack";
 
 interface DeploymentProps extends StageProps {
@@ -10,6 +11,7 @@ interface DeploymentProps extends StageProps {
   domainStage: string;
   isProd: boolean;
   secretArn: string;
+  ecrRepo: Repository;
 }
 
 export class PipelineAppStage extends Stage {
@@ -25,6 +27,7 @@ export class PipelineAppStage extends Stage {
         domainStage: props.domainStage,
         isProd: props.isProd,
         secretArn: props.secretArn,
+        ecrRepo: props.ecrRepo,
       }
     );
 
