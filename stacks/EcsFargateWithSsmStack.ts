@@ -78,6 +78,10 @@ export class EcsFargateWithSsmStack extends Stack {
       {
         memoryLimitMiB: 512,
         cpu: 256,
+        runtimePlatform: {
+          operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
+          cpuArchitecture: ecs.CpuArchitecture.ARM64,
+        },
       }
     );
 
