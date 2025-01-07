@@ -264,7 +264,7 @@ export class EcsFargateWithSsmStack extends Stack {
     // Step 6: Create Route 53 Record to point to the API Gateway
     new route53.ARecord(this, `ApiGatewayRecord-${props.domainStage}`, {
       zone: hostedZone,
-      recordName: 'api', // Subdomain name for your custom domain
+      recordName: `${props.domainStage}.api.taigerconsultancy-portal.com`, // Subdomain name for your custom domain
       target: route53.RecordTarget.fromAlias(
         new route53Targets.ApiGatewayDomain(domainName)
       ),
