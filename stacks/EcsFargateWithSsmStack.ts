@@ -41,50 +41,50 @@ export class EcsFargateWithSsmStack extends Stack {
     //   removalPolicy: RemovalPolicy.DESTROY, // Optional: To remove the repository when the stack is deleted
     // });
 
-    // // Step 1: VPC for ECS
-    // const vpc = new ec2.Vpc(this, `Vpc-${props.stageName}`, {
-    //   maxAzs: 2,
-    // });
+    // Step 1: VPC for ECS
+    const vpc = new ec2.Vpc(this, `Vpc`, {
+      maxAzs: 2,
+    });
 
-    // // Step 2: ECS Cluster
-    // const cluster = new ecs.Cluster(this, 'EcsCluster', {
-    //   vpc,
-    // });
+    // Step 2: ECS Cluster
+    const cluster = new ecs.Cluster(this, 'EcsCluster', {
+      vpc,
+    });
 
-    // // Step 3: Create Cloud Map Namespace for ECS Service Discovery
-    // const namespace = new servicediscovery.PrivateDnsNamespace(
-    //   this,
-    //   'MyNamespace',
-    //   {
-    //     name: 'taigerconsultancy.local',
-    //     vpc,
-    //   }
-    // );
+    // Step 3: Create Cloud Map Namespace for ECS Service Discovery
+    const namespace = new servicediscovery.PrivateDnsNamespace(
+      this,
+      'TaiGerPortalNamespace',
+      {
+        name: 'taigerconsultancy.local',
+        vpc,
+      }
+    );
 
-    // const taskDefinition = new ecs.FargateTaskDefinition(
-    //   this,
-    //   `TaskDef-${props.stageName}`,
-    //   {
-    //     memoryLimitMiB: 512,
-    //     cpu: 256,
-    //   }
-    // );
+    const taskDefinition = new ecs.FargateTaskDefinition(
+      this,
+      `TaskDef-${props.stageName}`,
+      {
+        memoryLimitMiB: 512,
+        cpu: 256,
+      }
+    );
 
-    // const secret = aws_secretsmanager.Secret.fromSecretCompleteArn(
-    //   this,
-    //   'MySecret',
-    //   props.secretArn
-    // );
+    const secret = aws_secretsmanager.Secret.fromSecretCompleteArn(
+      this,
+      'MySecret',
+      props.secretArn
+    );
 
-    // // Grant ECS Task Role permissions to read Secret Manager
-    // taskDefinition.addToTaskRolePolicy(
-    //   new iam.PolicyStatement({
-    //     actions: [
-    //       'secretsmanager:GetSecretValue', // Required to fetch secrets
-    //     ],
-    //     resources: [secret.secretFullArn ?? secret.secretArn], // Allow access to the specific secret
-    //   })
-    // );
+    // Grant ECS Task Role permissions to read Secret Manager
+    taskDefinition.addToTaskRolePolicy(
+      new iam.PolicyStatement({
+        actions: [
+          'secretsmanager:GetSecretValue', // Required to fetch secrets
+        ],
+        resources: [secret.secretFullArn ?? secret.secretArn], // Allow access to the specific secret
+      })
+    );
 
     // // Step 5: Add Container to Task Definition
     // const container = taskDefinition.addContainer(
