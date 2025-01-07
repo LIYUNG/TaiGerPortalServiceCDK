@@ -3,6 +3,7 @@ import {
   CodePipeline,
   CodePipelineSource,
   ShellStep,
+  CodeBuildStep,
 } from 'aws-cdk-lib/pipelines';
 import * as codepipeline_actions from 'aws-cdk-lib/aws-codepipeline-actions';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
@@ -14,18 +15,20 @@ import {
   GITHUB_OWNER,
   GITHUB_PACKAGE_BRANCH,
   GITHUB_REPO,
+  GITHUB_TAIGER_PORTAL_REPO,
   GITHUB_TOKEN,
 } from '../configuration/dependencies';
 import { PipelineAppStage } from './app-stage';
 import { Region, STAGES } from '../constants';
-import { EcrBuildStage } from './ecr-build-stage';
+// import { EcrBuildStage } from './ecr-build-stage';
+// import { LinuxBuildImage } from 'aws-cdk-lib/aws-codebuild';
 
 export class TaiGerPortalServiceStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
     // Define the source for the pipeline
-    const source = CodePipelineSource.gitHub(
+    const sourceInfra = CodePipelineSource.gitHub(
       `${GITHUB_OWNER}/${GITHUB_REPO}`,
       GITHUB_PACKAGE_BRANCH,
       {
@@ -34,16 +37,38 @@ export class TaiGerPortalServiceStack extends Stack {
       }
     );
 
+    // Define the source for the pipeline
+    const sourceCode = CodePipelineSource.gitHub(
+      `${GITHUB_OWNER}/${GITHUB_TAIGER_PORTAL_REPO}`,
+      GITHUB_PACKAGE_BRANCH,
+      {
+        authentication: SecretValue.secretsManager(GITHUB_TOKEN),
+        trigger: codepipeline_actions.GitHubTrigger.WEBHOOK,
+      }
+    );
+
+    // TODO run docker comment.
+    const prebuild = new ShellStep('Prebuild', {
+      input: sourceCode,
+      primaryOutputDirectory: './api',
+      commands: ['cd api'],
+    });
+
+    const pipelineSourceBuildStep = new CodeBuildStep('Synth', {
+      input: sourceInfra,
+      additionalInputs: {
+        '../dist': prebuild,
+      },
+      commands: ['npm ci', 'npm run build', 'npx cdk synth'],
+    });
+
     // Create the high-level CodePipeline
     const pipeline = new CodePipeline(
       this,
       `${APP_NAME_TAIGER_SERVICE}Pipeline`,
       {
         pipelineName: `${APP_NAME_TAIGER_SERVICE}Pipeline`,
-        synth: new ShellStep('Synth', {
-          input: source,
-          commands: ['npm ci', 'npm run build', 'npx cdk synth'],
-        }),
+        synth: pipelineSourceBuildStep,
         codeBuildDefaults: {
           rolePolicy: [
             new PolicyStatement({
@@ -56,13 +81,15 @@ export class TaiGerPortalServiceStack extends Stack {
             }),
           ],
         },
+        // Turn this on because the pipeline uses Docker image assets
+        dockerEnabledForSelfMutation: true,
       }
     );
 
-    const buidlStage = new EcrBuildStage(this, `ECRBuild-Stage`, {
-      env: { region: Region.IAD, account: AWS_ACCOUNT },
-    });
-    pipeline.addStage(buidlStage);
+    // const buidlStage = new EcrBuildStage(this, `ECRBuild-Stage`, {
+    //   env: { region: Region.IAD, account: AWS_ACCOUNT },
+    // });
+    // pipeline.addStage(buidlStage);
     STAGES.forEach(({ stageName, env, domainStage, isProd, secretArn }) => {
       const stage = new PipelineAppStage(this, `${stageName}-Stage`, {
         env,
@@ -70,7 +97,6 @@ export class TaiGerPortalServiceStack extends Stack {
         domainStage,
         isProd,
         secretArn,
-        buildProject: buidlStage.buildProject,
       });
       pipeline.addStage(stage);
     });
