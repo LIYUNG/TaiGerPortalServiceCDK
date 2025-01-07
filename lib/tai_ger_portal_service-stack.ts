@@ -21,7 +21,7 @@ import {
 import { PipelineAppStage } from './app-stage';
 import { Region, STAGES } from '../constants';
 import { LinuxArmBuildImage, LinuxBuildImage } from 'aws-cdk-lib/aws-codebuild';
-import { Repository } from 'aws-cdk-lib/aws-ecr';
+import { Repository, TagStatus } from 'aws-cdk-lib/aws-ecr';
 // import { EcrBuildStage } from './ecr-build-stage';
 // import { LinuxBuildImage } from 'aws-cdk-lib/aws-codebuild';
 
@@ -52,6 +52,35 @@ export class TaiGerPortalServiceStack extends Stack {
     // Step 1: Create an ECR repository
     const ecrRepo = new Repository(this, 'MyEcrRepo', {
       repositoryName: 'taiger-portal-service-repo',
+    });
+
+    // Define the lifecycle policy to keep only the last 20 images
+    const lifecycleRules = {
+      rules: [
+        {
+          rulePriority: 1,
+          description: 'Keep the last 20 images',
+          filter: {
+            tagStatus: TagStatus.ANY,
+          },
+          maxImageCount: 20, // Retain only the last 20 images
+        },
+        {
+          rulePriority: 2,
+          description: 'Delete images older than 20 images',
+          filter: {
+            tagStatus: TagStatus.ANY,
+          },
+          maxImageCount: 20, // Automatically deletes images beyond the last 20
+        },
+      ],
+    };
+
+    // Apply the lifecycle policy to the repository
+    ecrRepo.addLifecycleRule({
+      rulePriority: 1,
+      description: 'Keep the last 20 images',
+      maxImageCount: 20, // Retain only the last 20 images
     });
 
     // Export repository URI as output
