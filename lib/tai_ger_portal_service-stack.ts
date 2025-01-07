@@ -20,6 +20,8 @@ import {
 } from '../configuration/dependencies';
 import { PipelineAppStage } from './app-stage';
 import { Region, STAGES } from '../constants';
+import { LinuxArmBuildImage, LinuxBuildImage } from 'aws-cdk-lib/aws-codebuild';
+import { Repository } from 'aws-cdk-lib/aws-ecr';
 // import { EcrBuildStage } from './ecr-build-stage';
 // import { LinuxBuildImage } from 'aws-cdk-lib/aws-codebuild';
 
@@ -47,12 +49,28 @@ export class TaiGerPortalServiceStack extends Stack {
       }
     );
 
+    // Step 1: Create an ECR repository
+    const ecrRepo = new Repository(this, 'MyEcrRepo', {
+      repositoryName: 'taiger-portal-service-repo',
+    });
+
     // TODO run docker comment.
-    const prebuild = new ShellStep('Prebuild', {
+    const prebuild = new CodeBuildStep('Prebuild', {
       input: sourceCode,
       primaryOutputDirectory: './api',
-      commands: ['cd api'],
+      commands: [
+        'cd api', // Navigate to the API directory
+        '$(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)', // Log in to ECR
+        `docker build -t ${ecrRepo.repositoryUri} .`, // Build the Docker image
+        `docker push ${ecrRepo.repositoryUri}`, // Push the Docker image to ECR
+      ],
+      buildEnvironment: {
+        buildImage: LinuxBuildImage.AMAZON_LINUX_2_4,
+        privileged: true,
+      },
     });
+    // Grant CodeBuild permission to interact with ECR
+    ecrRepo.grantPullPush(prebuild.role!);
 
     const pipelineSourceBuildStep = new CodeBuildStep('Synth', {
       input: sourceInfra,
