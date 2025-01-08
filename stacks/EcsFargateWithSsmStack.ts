@@ -71,10 +71,29 @@ export class EcsFargateWithSsmStack extends Stack {
       }
     );
 
+    const taskRole = new iam.Role(this, 'TaskRole', {
+      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+    });
+
+    // Grant necessary permissions for CloudWatch Logs
+    taskRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: [
+          'logs:DescribeLogStreams',
+          'logs:CreateLogStream',
+          'logs:PutLogEvents',
+        ],
+        resources: [
+          `arn:aws:logs:${props.env?.region}:${AWS_ACCOUNT}:log-group:/taiger-portal-service-${props.domainStage}*`,
+        ],
+      })
+    );
+
     const taskDefinition = new ecs.FargateTaskDefinition(
       this,
       `TaskDef-${props.stageName}`,
       {
+        taskRole: taskRole,
         memoryLimitMiB: 512,
         cpu: 256,
         runtimePlatform: {
@@ -97,21 +116,6 @@ export class EcsFargateWithSsmStack extends Stack {
           'secretsmanager:GetSecretValue', // Required to fetch secrets
         ],
         resources: [secret.secretFullArn ?? secret.secretArn], // Allow access to the specific secret
-      })
-    );
-
-    // Grant ECS Task Role permissions to cloudwatch
-    taskDefinition.addToTaskRolePolicy(
-      new iam.PolicyStatement({
-        actions: [
-          'logs:CreateLogGroup',
-          'logs:CreateLogStream',
-          'logs:PutLogEvents',
-          'logs:DescribeLogStreams',
-        ],
-        resources: [
-          `arn:aws:logs:${props.env?.region}:${AWS_ACCOUNT}:log-group:/taiger-portal-service-${props.domainStage}*`,
-        ],
       })
     );
 
@@ -241,6 +245,7 @@ export class EcsFargateWithSsmStack extends Stack {
             'AWS_S3_BUCKET_NAME'
           ),
           AWS_REGION: ecs.Secret.fromSecretsManager(secret, 'AWS_REGION'),
+          AWS_LOG_GROUP: ecs.Secret.fromSecretsManager(secret, 'AWS_LOG_GROUP'),
           OPENAI_API_KEY: ecs.Secret.fromSecretsManager(
             secret,
             'OPENAI_API_KEY'
