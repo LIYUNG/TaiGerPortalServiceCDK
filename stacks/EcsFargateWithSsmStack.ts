@@ -84,7 +84,7 @@ export class EcsFargateWithSsmStack extends Stack {
           'logs:PutLogEvents',
         ],
         resources: [
-          `arn:aws:logs:${props.env?.region}:${AWS_ACCOUNT}:log-group:/taiger-portal-service-${props.domainStage}*`,
+          `arn:aws:logs:${props.env?.region}:${AWS_ACCOUNT}:log-group:taiger-portal-service-${props.domainStage}*`,
         ],
       })
     );
@@ -174,6 +174,17 @@ export class EcsFargateWithSsmStack extends Stack {
         logging: new ecs.AwsLogDriver({
           streamPrefix: `taiger-portal-service-${props.domainStage}`,
         }),
+        // TODO: add health check when necessary later
+        // healthCheck: {
+        //   command: [
+        //     'CMD-SHELL',
+        //     'curl --silent --fail localhost:8080 || exit 1',
+        //   ],
+        //   interval: cdk.Duration.seconds(30), // Check every 30 seconds
+        //   timeout: cdk.Duration.seconds(5),
+        //   retries: 3, // Number of retries before marking the container as unhealthy
+        //   startPeriod: cdk.Duration.seconds(10), // Wait for 10 seconds before starting the health check
+        // },
         secrets: {
           // Add SSM parameters as environment variables
           API_ORIGIN: ecs.Secret.fromSecretsManager(secret, 'API_ORIGIN'),
