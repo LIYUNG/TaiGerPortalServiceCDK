@@ -1,10 +1,8 @@
 import {
   aws_elasticloadbalancingv2,
   aws_secretsmanager,
-  Duration,
   Fn,
   RemovalPolicy,
-  SecretValue,
   Stack,
   StackProps,
 } from 'aws-cdk-lib';
@@ -12,14 +10,14 @@ import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as certmgr from 'aws-cdk-lib/aws-certificatemanager';
-import * as ecs_patterns from 'aws-cdk-lib/aws-ecs-patterns';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import { Construct } from 'constructs';
 import * as servicediscovery from 'aws-cdk-lib/aws-servicediscovery';
-import * as codebuild from 'aws-cdk-lib/aws-codebuild';
+import * as logs from 'aws-cdk-lib/aws-logs'; // For CloudWatch Log resources
+
 import { AWS_ACCOUNT } from '../configuration';
 
 interface EcsFargateWithSsmStackProps extends StackProps {
@@ -112,10 +110,16 @@ export class EcsFargateWithSsmStack extends Stack {
           'logs:DescribeLogStreams',
         ],
         resources: [
-          `arn:aws:logs:${props.env?.region}:${AWS_ACCOUNT}:log-group:/taiger-portal-service*`,
+          `arn:aws:logs:${props.env?.region}:${AWS_ACCOUNT}:log-group:/taiger-portal-service-${props.domainStage}*`,
         ],
       })
     );
+
+    new logs.LogGroup(this, 'LogGroup', {
+      logGroupName: `taiger-portal-service-${props.domainStage}`,
+      retention: logs.RetentionDays.SIX_MONTHS,
+      removalPolicy: RemovalPolicy.DESTROY, // Adjust based on your preference
+    });
 
     taskDefinition.addToTaskRolePolicy(
       new iam.PolicyStatement({
@@ -164,7 +168,7 @@ export class EcsFargateWithSsmStack extends Stack {
       {
         image: ecs.ContainerImage.fromEcrRepository(ecrRepo, 'latest'), // Replace with your Node.js app image
         logging: new ecs.AwsLogDriver({
-          streamPrefix: 'taiger-portal-service',
+          streamPrefix: `taiger-portal-service-${props.domainStage}`,
         }),
         secrets: {
           // Add SSM parameters as environment variables
@@ -303,14 +307,15 @@ export class EcsFargateWithSsmStack extends Stack {
     );
 
     const apiResource = api.root.addResource('api');
+    const proxyResource = apiResource.addResource('{proxy+}'); // Wildcard resource `/api/{proxy+}`
     // Check if `cloudMapService` is available before using it
     if (ecsService.cloudMapService) {
-      apiResource.addMethod(
+      proxyResource.addMethod(
         'ANY',
         new apigateway.Integration({
           type: apigateway.IntegrationType.HTTP,
           uri: `http://${nlb.loadBalancerDnsName}`, // use NLB instead
-          integrationHttpMethod: 'GET',
+          integrationHttpMethod: 'ANY',
           options: {
             connectionType: apigateway.ConnectionType.VPC_LINK,
             vpcLink: vpcLink,
