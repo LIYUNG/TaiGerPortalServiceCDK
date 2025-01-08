@@ -2,7 +2,6 @@ import { CfnOutput, SecretValue, Stack, StackProps } from 'aws-cdk-lib';
 import {
   CodePipeline,
   CodePipelineSource,
-  ShellStep,
   CodeBuildStep,
 } from 'aws-cdk-lib/pipelines';
 import * as codepipeline_actions from 'aws-cdk-lib/aws-codepipeline-actions';
@@ -20,10 +19,12 @@ import {
 } from '../configuration/dependencies';
 import { PipelineAppStage } from './app-stage';
 import { Region, STAGES } from '../constants';
-import { LinuxArmBuildImage, LinuxBuildImage } from 'aws-cdk-lib/aws-codebuild';
-import { Repository, TagStatus } from 'aws-cdk-lib/aws-ecr';
-// import { EcrBuildStage } from './ecr-build-stage';
-// import { LinuxBuildImage } from 'aws-cdk-lib/aws-codebuild';
+import { LinuxBuildImage } from 'aws-cdk-lib/aws-codebuild';
+import {
+  CfnReplicationConfiguration,
+  Repository,
+  TagStatus,
+} from 'aws-cdk-lib/aws-ecr';
 
 export class TaiGerPortalServiceStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -54,27 +55,20 @@ export class TaiGerPortalServiceStack extends Stack {
       repositoryName: 'taiger-portal-service-repo',
     });
 
-    // Define the lifecycle policy to keep only the last 20 images
-    const lifecycleRules = {
-      rules: [
-        {
-          rulePriority: 1,
-          description: 'Keep the last 20 images',
-          filter: {
-            tagStatus: TagStatus.ANY,
+    new CfnReplicationConfiguration(this, 'MyCfnReplicationConfiguration', {
+      replicationConfiguration: {
+        rules: [
+          {
+            destinations: [
+              {
+                region: 'us-west-2',
+                registryId: AWS_ACCOUNT,
+              },
+            ],
           },
-          maxImageCount: 20, // Retain only the last 20 images
-        },
-        {
-          rulePriority: 2,
-          description: 'Delete images older than 20 images',
-          filter: {
-            tagStatus: TagStatus.ANY,
-          },
-          maxImageCount: 20, // Automatically deletes images beyond the last 20
-        },
-      ],
-    };
+        ],
+      },
+    });
 
     // Apply the lifecycle policy to the repository
     ecrRepo.addLifecycleRule({

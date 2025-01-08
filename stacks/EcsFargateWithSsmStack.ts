@@ -20,6 +20,7 @@ import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import { Construct } from 'constructs';
 import * as servicediscovery from 'aws-cdk-lib/aws-servicediscovery';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
+import { AWS_ACCOUNT } from '../configuration';
 
 interface EcsFargateWithSsmStackProps extends StackProps {
   stageName: string;
@@ -90,7 +91,7 @@ export class EcsFargateWithSsmStack extends Stack {
       'MySecret',
       props.secretArn
     );
-    console.log(secret.secretFullArn);
+
     // Grant ECS Task Role permissions to read Secret Manager
     taskDefinition.addToTaskRolePolicy(
       new iam.PolicyStatement({
@@ -98,6 +99,56 @@ export class EcsFargateWithSsmStack extends Stack {
           'secretsmanager:GetSecretValue', // Required to fetch secrets
         ],
         resources: [secret.secretFullArn ?? secret.secretArn], // Allow access to the specific secret
+      })
+    );
+
+    // Grant ECS Task Role permissions to cloudwatch
+    taskDefinition.addToTaskRolePolicy(
+      new iam.PolicyStatement({
+        actions: [
+          'logs:CreateLogGroup',
+          'logs:CreateLogStream',
+          'logs:PutLogEvents',
+          'logs:DescribeLogStreams',
+        ],
+        resources: [
+          `arn:aws:logs:${props.env?.region}:${AWS_ACCOUNT}:log-group:/taiger-portal-service*`,
+        ],
+      })
+    );
+
+    taskDefinition.addToTaskRolePolicy(
+      new iam.PolicyStatement({
+        actions: [
+          's3:GetObject',
+          's3:PutObject',
+          's3:ListBucket',
+          's3:DeleteObject',
+        ],
+        resources: [
+          `arn:aws:s3:::taiger-file-storage`,
+          `arn:aws:s3:::taiger-file-storage/*`,
+          `arn:aws:s3:::taiger-file-storage-public`,
+          `arn:aws:s3:::taiger-file-storage-public/*`,
+        ],
+      })
+    );
+
+    // Add permissions for SES
+    taskDefinition.addToTaskRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['ses:SendEmail'],
+        resources: ['*'], // SES email sending permissions
+      })
+    );
+
+    // invoke Transcript analyser api gateway lambda.
+    taskDefinition.addToTaskRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['execute-api:Invoke'],
+        resources: [
+          `arn:aws:execute-api:${props.env?.region}:${AWS_ACCOUNT}:fdhqz73v0f/*/*/*`, // Replace with your API Gateway ARN
+        ],
       })
     );
 
@@ -195,7 +246,7 @@ export class EcsFargateWithSsmStack extends Stack {
     );
 
     container.addPortMappings({
-      containerPort: 80,
+      containerPort: 3000,
     });
 
     // Step 6: Fargate Service
