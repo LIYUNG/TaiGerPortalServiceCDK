@@ -71,6 +71,12 @@ export class EcsFargateWithSsmStack extends Stack {
       }
     );
 
+    securityGroup.addEgressRule(
+      ec2.Peer.ipv4(vpc.vpcCidrBlock),
+      ec2.Port.tcp(443),
+      'Allow outbound access to VPC endpoints for ECR'
+    );
+
     // Step 2: ECS Cluster
     const cluster = new ecs.Cluster(this, 'EcsCluster', {
       vpc,
