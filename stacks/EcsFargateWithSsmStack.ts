@@ -141,21 +141,33 @@ export class EcsFargateWithSsmStack extends Stack {
     new ec2.InterfaceVpcEndpoint(this, 'EcrVpcEndpoint', {
       vpc,
       service: ec2.InterfaceVpcEndpointAwsService.ECR,
+      subnets: {
+        subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+      },
     });
 
     new ec2.InterfaceVpcEndpoint(this, 'EcrDockerVpcEndpoint', {
       vpc,
       service: ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
+      subnets: {
+        subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+      },
     });
 
     new ec2.InterfaceVpcEndpoint(this, 'EcsApiGatewayEndpoint', {
       vpc,
       service: ec2.InterfaceVpcEndpointAwsService.APIGATEWAY,
+      subnets: {
+        subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+      },
     });
 
     new ec2.InterfaceVpcEndpoint(this, 'CloudWatchLogsVpcEndpoint', {
       vpc,
       service: ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
+      subnets: {
+        subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+      },
     });
 
     // Grant ECS Task Role permissions to read Secret Manager
