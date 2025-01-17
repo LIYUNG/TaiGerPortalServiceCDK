@@ -142,7 +142,7 @@ export class EcsFargateWithSsmStack extends Stack {
       service: ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
     });
 
-    new ec2.InterfaceVpcEndpoint(this, 'EcrDockerVpcEndpoint', {
+    new ec2.InterfaceVpcEndpoint(this, 'EcsApiGatewayEndpoint', {
       vpc,
       service: ec2.InterfaceVpcEndpointAwsService.APIGATEWAY,
     });
