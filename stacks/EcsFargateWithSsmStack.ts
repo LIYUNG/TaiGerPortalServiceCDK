@@ -46,14 +46,14 @@ export class EcsFargateWithSsmStack extends Stack {
       maxAzs: 2,
       natGateways: 0, // Number of NAT Gateways
       subnetConfiguration: [
-        {
-          name: 'Public',
-          subnetType: ec2.SubnetType.PUBLIC,
-        },
-        {
-          name: 'Private',
-          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-        },
+        // {
+        //   name: 'Public',
+        //   subnetType: ec2.SubnetType.PUBLIC,
+        // },
+        // {
+        //   name: 'Private',
+        //   subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+        // },
         {
           name: 'Isolated',
           subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
@@ -123,6 +123,34 @@ export class EcsFargateWithSsmStack extends Stack {
       'MySecret',
       props.secretArn
     );
+
+    new ec2.InterfaceVpcEndpoint(this, 'SecretsManagerVpcEndpoint', {
+      vpc,
+      service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
+      subnets: {
+        subnetType: ec2.SubnetType.PRIVATE_ISOLATED, // Use isolated subnets to avoid NAT usage
+      },
+    });
+
+    new ec2.InterfaceVpcEndpoint(this, 'EcrVpcEndpoint', {
+      vpc,
+      service: ec2.InterfaceVpcEndpointAwsService.ECR,
+    });
+
+    new ec2.InterfaceVpcEndpoint(this, 'EcrDockerVpcEndpoint', {
+      vpc,
+      service: ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
+    });
+
+    new ec2.InterfaceVpcEndpoint(this, 'EcrDockerVpcEndpoint', {
+      vpc,
+      service: ec2.InterfaceVpcEndpointAwsService.APIGATEWAY,
+    });
+
+    new ec2.InterfaceVpcEndpoint(this, 'CloudWatchLogsVpcEndpoint', {
+      vpc,
+      service: ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
+    });
 
     // Grant ECS Task Role permissions to read Secret Manager
     taskDefinition.addToTaskRolePolicy(
@@ -288,6 +316,7 @@ export class EcsFargateWithSsmStack extends Stack {
     const ecsService = new ecs.FargateService(this, 'FargateService', {
       cluster,
       taskDefinition,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       desiredCount: 1,
       serviceName: 'taiGerPortalService',
       securityGroups: [securityGroup],
