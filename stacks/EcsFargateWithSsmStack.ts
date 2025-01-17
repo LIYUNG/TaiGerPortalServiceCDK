@@ -44,6 +44,21 @@ export class EcsFargateWithSsmStack extends Stack {
     // Step 1: VPC for ECS
     const vpc = new ec2.Vpc(this, `Vpc`, {
       maxAzs: 2,
+      natGateways: 0, // Number of NAT Gateways
+      subnetConfiguration: [
+        {
+          name: 'Public',
+          subnetType: ec2.SubnetType.PUBLIC,
+        },
+        {
+          name: 'Private',
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+        },
+        {
+          name: 'Isolated',
+          subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+        },
+      ],
     });
 
     const securityGroup = new ec2.SecurityGroup(
