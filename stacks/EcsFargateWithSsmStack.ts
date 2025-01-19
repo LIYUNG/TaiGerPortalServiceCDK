@@ -380,11 +380,7 @@ export class EcsFargateWithSsmStack extends Stack {
       certificates: [certificate], // Attach your SSL/TLS certificate
     });
 
-    listener.addTargets('AddTarget', {
-      targets: [ecsService],
-      port: 3000, // ECS container port
-      protocol: aws_elasticloadbalancingv2.Protocol.TCP,
-    });
+    listener.addTargetGroups('AddTargetGroups', ...[targetGroup]);
 
     // Check if `cloudMapService` is available before using it
     if (ecsService.cloudMapService) {
