@@ -318,6 +318,7 @@ export class EcsFargateWithSsmStack extends Stack {
       'NLB',
       {
         vpc,
+        vpcSubnets: publicSubnets,
       }
     );
 
