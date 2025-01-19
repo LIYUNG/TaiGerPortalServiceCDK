@@ -46,14 +46,14 @@ export class EcsFargateWithSsmStack extends Stack {
       maxAzs: 2,
       natGateways: 0, // Number of NAT Gateways
       subnetConfiguration: [
-        // {
-        //   name: 'Public',
-        //   subnetType: ec2.SubnetType.PUBLIC,
-        // },
-        // {
-        //   name: 'Private',
-        //   subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-        // },
+        {
+          name: 'Public',
+          subnetType: ec2.SubnetType.PUBLIC,
+        },
+        {
+          name: 'Private',
+          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+        },
         {
           name: 'Isolated',
           subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
@@ -71,10 +71,13 @@ export class EcsFargateWithSsmStack extends Stack {
       }
     );
 
-    securityGroup.addEgressRule(
-      ec2.Peer.ipv4(vpc.vpcCidrBlock),
-      ec2.Port.tcp(443),
-      'Allow outbound access to VPC endpoints for ECR'
+    // Allow inbound traffic only from CloudFront's IP ranges
+    // TODO regionalize
+    const cloudfrontPrefixList = ec2.Peer.prefixList('pl-82a045eb'); // Managed prefix list for CloudFront
+    securityGroup.addIngressRule(
+      cloudfrontPrefixList,
+      ec2.Port.tcp(3000), // Adjust this if your ECS service listens on a different port
+      'Allow inbound access from CloudFront IP ranges'
     );
 
     // Step 2: ECS Cluster
@@ -129,46 +132,6 @@ export class EcsFargateWithSsmStack extends Stack {
       'MySecret',
       props.secretArn
     );
-
-    new ec2.InterfaceVpcEndpoint(this, 'SecretsManagerVpcEndpoint', {
-      vpc,
-      service: ec2.InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
-      subnets: {
-        subnetType: ec2.SubnetType.PRIVATE_ISOLATED, // Use isolated subnets to avoid NAT usage
-      },
-    });
-
-    new ec2.InterfaceVpcEndpoint(this, 'EcrVpcEndpoint', {
-      vpc,
-      service: ec2.InterfaceVpcEndpointAwsService.ECR,
-      subnets: {
-        subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
-      },
-    });
-
-    new ec2.InterfaceVpcEndpoint(this, 'EcrDockerVpcEndpoint', {
-      vpc,
-      service: ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
-      subnets: {
-        subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
-      },
-    });
-
-    new ec2.InterfaceVpcEndpoint(this, 'EcsApiGatewayEndpoint', {
-      vpc,
-      service: ec2.InterfaceVpcEndpointAwsService.APIGATEWAY,
-      subnets: {
-        subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
-      },
-    });
-
-    new ec2.InterfaceVpcEndpoint(this, 'CloudWatchLogsVpcEndpoint', {
-      vpc,
-      service: ec2.InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
-      subnets: {
-        subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
-      },
-    });
 
     // Grant ECS Task Role permissions to read Secret Manager
     taskDefinition.addToTaskRolePolicy(
@@ -330,11 +293,16 @@ export class EcsFargateWithSsmStack extends Stack {
       containerPort: 3000,
     });
 
+    // Get the public subnets from the VPC
+    const publicSubnets = vpc.selectSubnets({
+      subnetType: ec2.SubnetType.PUBLIC,
+    });
+
     // Step 6: Fargate Service
     const ecsService = new ecs.FargateService(this, 'FargateService', {
       cluster,
       taskDefinition,
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      vpcSubnets: publicSubnets,
       desiredCount: 1,
       serviceName: 'taiGerPortalService',
       securityGroups: [securityGroup],
