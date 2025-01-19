@@ -355,13 +355,33 @@ export class EcsFargateWithSsmStack extends Stack {
 
     const apiResource = api.root.addResource('api');
     const proxyResource = apiResource.addResource('{proxy+}'); // Wildcard resource `/api/{proxy+}`
+
+    const targetGroup = new aws_elasticloadbalancingv2.NetworkTargetGroup(
+      this,
+      'TargetGroup',
+      {
+        vpc,
+        port: 3000, // ECS container port
+        protocol: aws_elasticloadbalancingv2.Protocol.TCP,
+      }
+    );
+    ecsService.attachToNetworkTargetGroup(targetGroup);
+
+    const listener = nlb.addListener('Listener', {
+      port: 443, // The port your NLB listens on (e.g., HTTP or HTTPS)
+      protocol: aws_elasticloadbalancingv2.Protocol.TLS, // HTTPS
+      certificates: [certificate], // Attach your SSL/TLS certificate
+    });
+
+    listener.addTargetGroups('AddTargetGroup', targetGroup);
+
     // Check if `cloudMapService` is available before using it
     if (ecsService.cloudMapService) {
       proxyResource.addMethod(
         'ANY',
         new apigateway.Integration({
           type: apigateway.IntegrationType.HTTP,
-          uri: `http://${nlb.loadBalancerDnsName}`, // use NLB instead
+          uri: `https://${nlb.loadBalancerDnsName}:443`, // use NLB instead
           integrationHttpMethod: 'ANY',
           options: {
             connectionType: apigateway.ConnectionType.VPC_LINK,
