@@ -1,6 +1,7 @@
 import {
   aws_elasticloadbalancingv2,
   aws_secretsmanager,
+  Duration,
   Fn,
   RemovalPolicy,
   Stack,
@@ -363,6 +364,11 @@ export class EcsFargateWithSsmStack extends Stack {
         vpc,
         port: 3000, // ECS container port
         protocol: aws_elasticloadbalancingv2.Protocol.TCP,
+        targetType: aws_elasticloadbalancingv2.TargetType.IP,
+        // healthCheck: {
+        //   path: '/health', // Health check path
+        //   interval: Duration.seconds(30), // Health check interval
+        // },
       }
     );
 
