@@ -310,7 +310,7 @@ export class EcsFargateWithSsmStack extends Stack {
         cloudMapNamespace: namespace,
         name: 'taiGerPortalService', // The service name used for discovery
       },
-      assignPublicIp: false, // Disable public IP as the task is in a private subnet
+      assignPublicIp: true, // Disable public IP as the task is in a private subnet
     });
 
     const nlb = new aws_elasticloadbalancingv2.NetworkLoadBalancer(
