@@ -365,6 +365,7 @@ export class EcsFargateWithSsmStack extends Stack {
         protocol: aws_elasticloadbalancingv2.Protocol.TCP,
       }
     );
+
     ecsService.attachToNetworkTargetGroup(targetGroup);
 
     const listener = nlb.addListener('Listener', {
@@ -373,7 +374,11 @@ export class EcsFargateWithSsmStack extends Stack {
       certificates: [certificate], // Attach your SSL/TLS certificate
     });
 
-    listener.addTargetGroups('AddTargetGroup', targetGroup);
+    listener.addTargets('AddTarget', {
+      targets: [ecsService],
+      port: 3000, // ECS container port
+      protocol: aws_elasticloadbalancingv2.Protocol.TCP,
+    });
 
     // Check if `cloudMapService` is available before using it
     if (ecsService.cloudMapService) {
