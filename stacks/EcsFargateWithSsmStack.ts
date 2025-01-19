@@ -73,7 +73,7 @@ export class EcsFargateWithSsmStack extends Stack {
 
     // Allow inbound traffic only from CloudFront's IP ranges
     // TODO regionalize
-    const cloudfrontPrefixList = ec2.Peer.prefixList('pl-82a045eb'); // Managed prefix list for CloudFront
+    const cloudfrontPrefixList = ec2.Peer.prefixList('pl-3b927c52'); // Managed prefix list for CloudFront
     securityGroup.addIngressRule(
       cloudfrontPrefixList,
       ec2.Port.tcp(3000), // Adjust this if your ECS service listens on a different port
