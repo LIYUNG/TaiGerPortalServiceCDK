@@ -302,6 +302,8 @@ export class EcsFargateWithSsmStack extends Stack {
     const proxyResource = apiResource.addResource('{proxy+}'); // Wildcard resource `/api/{proxy+}`
     const authResource = api.root.addResource('auth');
     const authProxyResource = authResource.addResource('{proxy+}'); // Wildcard resource `/api/{proxy+}`
+    const imagesResource = api.root.addResource('images');
+    const imagesProxyResource = imagesResource.addResource('{proxy+}'); // Wildcard resource `/api/{proxy+}`
 
     // Check if `cloudMapService` is available before using it
     const albIntegration = new apigateway.HttpIntegration(
@@ -314,6 +316,7 @@ export class EcsFargateWithSsmStack extends Stack {
 
     proxyResource.addMethod('ANY', albIntegration);
     authProxyResource.addMethod('ANY', albIntegration);
+    imagesProxyResource.addMethod('ANY', albIntegration);
 
     new apigateway.BasePathMapping(this, 'BasePathMapping', {
       domainName: domainName,
