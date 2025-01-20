@@ -1,9 +1,7 @@
 import {
-  aws_elasticloadbalancingv2,
+  aws_ecs_patterns,
   aws_secretsmanager,
-  Duration,
   Fn,
-  RemovalPolicy,
   Stack,
   StackProps,
 } from 'aws-cdk-lib';
@@ -16,8 +14,6 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import { Construct } from 'constructs';
-import * as servicediscovery from 'aws-cdk-lib/aws-servicediscovery';
-import * as logs from 'aws-cdk-lib/aws-logs'; // For CloudWatch Log resources
 
 import { AWS_ACCOUNT } from '../configuration';
 
@@ -80,14 +76,10 @@ export class EcsFargateWithSsmStack extends Stack {
       vpc,
     });
 
-    // Step 3: Create Cloud Map Namespace for ECS Service Discovery
-    const namespace = new servicediscovery.PrivateDnsNamespace(
+    const secret = aws_secretsmanager.Secret.fromSecretCompleteArn(
       this,
-      'TaiGerPortalNamespace',
-      {
-        name: 'taigerconsultancy.local',
-        vpc,
-      }
+      'TaiGerSecret',
+      props.secretArn
     );
 
     const taskRole = new iam.Role(this, 'TaskRole', {
@@ -108,28 +100,22 @@ export class EcsFargateWithSsmStack extends Stack {
       })
     );
 
-    const taskDefinition = new ecs.FargateTaskDefinition(
-      this,
-      `TaskDef-${props.stageName}`,
-      {
-        taskRole: taskRole,
-        memoryLimitMiB: 512,
-        cpu: 256,
-        runtimePlatform: {
-          operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
-          cpuArchitecture: ecs.CpuArchitecture.ARM64,
-        },
-      }
+    taskRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ['ses:SendEmail'],
+        resources: ['*'], // SES email sending permissions
+      })
+    );
+    taskRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ['execute-api:Invoke'],
+        resources: [
+          `arn:aws:execute-api:${props.env?.region}:${AWS_ACCOUNT}:cnmfjn7m6j/*/*/*`, // Replace with your API Gateway ARN
+        ],
+      })
     );
 
-    const secret = aws_secretsmanager.Secret.fromSecretCompleteArn(
-      this,
-      'MySecret',
-      props.secretArn
-    );
-
-    // Grant ECS Task Role permissions to read Secret Manager
-    taskDefinition.addToTaskRolePolicy(
+    taskRole.addToPolicy(
       new iam.PolicyStatement({
         actions: [
           'secretsmanager:GetSecretValue', // Required to fetch secrets
@@ -138,13 +124,7 @@ export class EcsFargateWithSsmStack extends Stack {
       })
     );
 
-    new logs.LogGroup(this, 'LogGroup', {
-      logGroupName: `taiger-portal-service-${props.domainStage}`,
-      retention: logs.RetentionDays.SIX_MONTHS,
-      removalPolicy: RemovalPolicy.DESTROY, // Adjust based on your preference
-    });
-
-    taskDefinition.addToTaskRolePolicy(
+    taskRole.addToPolicy(
       new iam.PolicyStatement({
         actions: [
           's3:GetObject',
@@ -161,166 +141,123 @@ export class EcsFargateWithSsmStack extends Stack {
       })
     );
 
-    // Add permissions for SES
-    taskDefinition.addToTaskRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['ses:SendEmail'],
-        resources: ['*'], // SES email sending permissions
-      })
-    );
-
-    // invoke Transcript analyser api gateway lambda.
-    taskDefinition.addToTaskRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['execute-api:Invoke'],
-        resources: [
-          `arn:aws:execute-api:${props.env?.region}:${AWS_ACCOUNT}:fdhqz73v0f/*/*/*`, // Replace with your API Gateway ARN
-        ],
-      })
-    );
-
     const ecrRepo = ecr.Repository.fromRepositoryName(
       this,
       'ImportedEcrRepo',
       Fn.importValue('EcrRepoUri')
     );
 
-    // Step 5: Add Container to Task Definition
-    const container = taskDefinition.addContainer(
-      `TaiGerPortalServiceContainer-${props.stageName}`,
-      {
-        image: ecs.ContainerImage.fromEcrRepository(ecrRepo, 'latest'), // Replace with your Node.js app image
-        logging: new ecs.AwsLogDriver({
-          streamPrefix: `taiger-portal-service-${props.domainStage}`,
-        }),
-        // TODO: add health check when necessary later
-        // healthCheck: {
-        //   command: [
-        //     'CMD-SHELL',
-        //     'curl --silent --fail localhost:8080 || exit 1',
-        //   ],
-        //   interval: cdk.Duration.seconds(30), // Check every 30 seconds
-        //   timeout: cdk.Duration.seconds(5),
-        //   retries: 3, // Number of retries before marking the container as unhealthy
-        //   startPeriod: cdk.Duration.seconds(10), // Wait for 10 seconds before starting the health check
-        // },
-        secrets: {
-          // Add SSM parameters as environment variables
-          API_ORIGIN: ecs.Secret.fromSecretsManager(secret, 'API_ORIGIN'),
-          JWT_SECRET: ecs.Secret.fromSecretsManager(secret, 'JWT_SECRET'),
-          HTTPS_PORT: ecs.Secret.fromSecretsManager(secret, 'HTTPS_PORT'),
-          JWT_EXPIRE: ecs.Secret.fromSecretsManager(secret, 'JWT_EXPIRE'),
-          MONGODB_URI: ecs.Secret.fromSecretsManager(secret, 'MONGODB_URI'),
-          PORT: ecs.Secret.fromSecretsManager(secret, 'PORT'),
-          PROGRAMS_CACHE: ecs.Secret.fromSecretsManager(
-            secret,
-            'PROGRAMS_CACHE'
-          ),
-          ESCALATION_DEADLINE_DAYS_TRIGGER: ecs.Secret.fromSecretsManager(
-            secret,
-            'ESCALATION_DEADLINE_DAYS_TRIGGER'
-          ),
-          SMTP_HOST: ecs.Secret.fromSecretsManager(secret, 'SMTP_HOST'),
-          SMTP_PORT: ecs.Secret.fromSecretsManager(secret, 'SMTP_PORT'),
-          SMTP_USERNAME: ecs.Secret.fromSecretsManager(secret, 'SMTP_USERNAME'),
-          SMTP_PASSWORD: ecs.Secret.fromSecretsManager(secret, 'SMTP_PASSWORD'),
-          ORIGIN: ecs.Secret.fromSecretsManager(secret, 'ORIGIN'),
-          CLEAN_UP_SCHEDULE: ecs.Secret.fromSecretsManager(
-            secret,
-            'CLEAN_UP_SCHEDULE'
-          ),
-          WEEKLY_TASKS_REMINDER_SCHEDULE: ecs.Secret.fromSecretsManager(
-            secret,
-            'WEEKLY_TASKS_REMINDER_SCHEDULE'
-          ),
-          DAILY_TASKS_REMINDER_SCHEDULE: ecs.Secret.fromSecretsManager(
-            secret,
-            'DAILY_TASKS_REMINDER_SCHEDULE'
-          ),
-          COURSE_SELECTION_TASKS_REMINDER_JUNE_SCHEDULE:
-            ecs.Secret.fromSecretsManager(
-              secret,
-              'COURSE_SELECTION_TASKS_REMINDER_JUNE_SCHEDULE'
-            ),
-          COURSE_SELECTION_TASKS_REMINDER_JULY_SCHEDULE:
-            ecs.Secret.fromSecretsManager(
-              secret,
-              'COURSE_SELECTION_TASKS_REMINDER_JULY_SCHEDULE'
-            ),
-          COURSE_SELECTION_TASKS_REMINDER_NOVEMBER_SCHEDULE:
-            ecs.Secret.fromSecretsManager(
-              secret,
-              'COURSE_SELECTION_TASKS_REMINDER_NOVEMBER_SCHEDULE'
-            ),
-          COURSE_SELECTION_TASKS_REMINDER_DECEMBER_SCHEDULE:
-            ecs.Secret.fromSecretsManager(
-              secret,
-              'COURSE_SELECTION_TASKS_REMINDER_DECEMBER_SCHEDULE'
-            ),
-          UPLOAD_PATH: ecs.Secret.fromSecretsManager(secret, 'UPLOAD_PATH'),
-          AWS_S3_PUBLIC_BUCKET: ecs.Secret.fromSecretsManager(
-            secret,
-            'AWS_S3_PUBLIC_BUCKET'
-          ),
-          AWS_S3_PUBLIC_BUCKET_NAME: ecs.Secret.fromSecretsManager(
-            secret,
-            'AWS_S3_PUBLIC_BUCKET_NAME'
-          ),
-          AWS_S3_DATAPIPELINE_TENFOLDAI_SNAPSHOT: ecs.Secret.fromSecretsManager(
-            secret,
-            'AWS_S3_DATAPIPELINE_TENFOLDAI_SNAPSHOT'
-          ),
-          AWS_S3_BUCKET_NAME: ecs.Secret.fromSecretsManager(
-            secret,
-            'AWS_S3_BUCKET_NAME'
-          ),
-          AWS_REGION: ecs.Secret.fromSecretsManager(secret, 'AWS_REGION'),
-          AWS_LOG_GROUP: ecs.Secret.fromSecretsManager(secret, 'AWS_LOG_GROUP'),
-          OPENAI_API_KEY: ecs.Secret.fromSecretsManager(
-            secret,
-            'OPENAI_API_KEY'
-          ),
-        },
-      }
-    );
-
-    container.addPortMappings({
-      containerPort: 3000,
-    });
-
-    // Get the public subnets from the VPC
-    const publicSubnets = vpc.selectSubnets({
-      subnetType: ec2.SubnetType.PUBLIC,
-    });
-
     // Step 6: Fargate Service
-    const ecsService = new ecs.FargateService(this, 'FargateService', {
-      cluster,
-      taskDefinition,
-      vpcSubnets: publicSubnets,
-      desiredCount: 1,
-      serviceName: 'taiGerPortalService',
-      securityGroups: [securityGroup],
-      cloudMapOptions: {
-        cloudMapNamespace: namespace,
-        name: 'taiGerPortalService', // The service name used for discovery
-      },
-      assignPublicIp: true, // Disable public IP as the task is in a private subnet
-    });
+    // Instantiate a Fargate service in the public subnet
+    const fargateService =
+      new aws_ecs_patterns.ApplicationLoadBalancedFargateService(
+        this,
+        'FargateService',
+        {
+          cluster,
+          taskImageOptions: {
+            image: ecs.ContainerImage.fromEcrRepository(ecrRepo, 'latest'), // Replace with your Node.js app image
+            containerPort: 3000,
+            secrets: {
+              // Add SSM parameters as environment variables
+              API_ORIGIN: ecs.Secret.fromSecretsManager(secret, 'API_ORIGIN'),
+              JWT_SECRET: ecs.Secret.fromSecretsManager(secret, 'JWT_SECRET'),
+              HTTPS_PORT: ecs.Secret.fromSecretsManager(secret, 'HTTPS_PORT'),
+              JWT_EXPIRE: ecs.Secret.fromSecretsManager(secret, 'JWT_EXPIRE'),
+              MONGODB_URI: ecs.Secret.fromSecretsManager(secret, 'MONGODB_URI'),
+              PORT: ecs.Secret.fromSecretsManager(secret, 'PORT'),
+              PROGRAMS_CACHE: ecs.Secret.fromSecretsManager(
+                secret,
+                'PROGRAMS_CACHE'
+              ),
+              ESCALATION_DEADLINE_DAYS_TRIGGER: ecs.Secret.fromSecretsManager(
+                secret,
+                'ESCALATION_DEADLINE_DAYS_TRIGGER'
+              ),
+              SMTP_HOST: ecs.Secret.fromSecretsManager(secret, 'SMTP_HOST'),
+              SMTP_PORT: ecs.Secret.fromSecretsManager(secret, 'SMTP_PORT'),
+              SMTP_USERNAME: ecs.Secret.fromSecretsManager(
+                secret,
+                'SMTP_USERNAME'
+              ),
+              SMTP_PASSWORD: ecs.Secret.fromSecretsManager(
+                secret,
+                'SMTP_PASSWORD'
+              ),
+              ORIGIN: ecs.Secret.fromSecretsManager(secret, 'ORIGIN'),
+              CLEAN_UP_SCHEDULE: ecs.Secret.fromSecretsManager(
+                secret,
+                'CLEAN_UP_SCHEDULE'
+              ),
+              WEEKLY_TASKS_REMINDER_SCHEDULE: ecs.Secret.fromSecretsManager(
+                secret,
+                'WEEKLY_TASKS_REMINDER_SCHEDULE'
+              ),
+              DAILY_TASKS_REMINDER_SCHEDULE: ecs.Secret.fromSecretsManager(
+                secret,
+                'DAILY_TASKS_REMINDER_SCHEDULE'
+              ),
+              COURSE_SELECTION_TASKS_REMINDER_JUNE_SCHEDULE:
+                ecs.Secret.fromSecretsManager(
+                  secret,
+                  'COURSE_SELECTION_TASKS_REMINDER_JUNE_SCHEDULE'
+                ),
+              COURSE_SELECTION_TASKS_REMINDER_JULY_SCHEDULE:
+                ecs.Secret.fromSecretsManager(
+                  secret,
+                  'COURSE_SELECTION_TASKS_REMINDER_JULY_SCHEDULE'
+                ),
+              COURSE_SELECTION_TASKS_REMINDER_NOVEMBER_SCHEDULE:
+                ecs.Secret.fromSecretsManager(
+                  secret,
+                  'COURSE_SELECTION_TASKS_REMINDER_NOVEMBER_SCHEDULE'
+                ),
+              COURSE_SELECTION_TASKS_REMINDER_DECEMBER_SCHEDULE:
+                ecs.Secret.fromSecretsManager(
+                  secret,
+                  'COURSE_SELECTION_TASKS_REMINDER_DECEMBER_SCHEDULE'
+                ),
+              UPLOAD_PATH: ecs.Secret.fromSecretsManager(secret, 'UPLOAD_PATH'),
+              AWS_S3_PUBLIC_BUCKET: ecs.Secret.fromSecretsManager(
+                secret,
+                'AWS_S3_PUBLIC_BUCKET'
+              ),
+              AWS_S3_PUBLIC_BUCKET_NAME: ecs.Secret.fromSecretsManager(
+                secret,
+                'AWS_S3_PUBLIC_BUCKET_NAME'
+              ),
+              AWS_S3_DATAPIPELINE_TENFOLDAI_SNAPSHOT:
+                ecs.Secret.fromSecretsManager(
+                  secret,
+                  'AWS_S3_DATAPIPELINE_TENFOLDAI_SNAPSHOT'
+                ),
+              AWS_S3_BUCKET_NAME: ecs.Secret.fromSecretsManager(
+                secret,
+                'AWS_S3_BUCKET_NAME'
+              ),
+              AWS_REGION: ecs.Secret.fromSecretsManager(secret, 'AWS_REGION'),
+              AWS_LOG_GROUP: ecs.Secret.fromSecretsManager(
+                secret,
+                'AWS_LOG_GROUP'
+              ),
+              OPENAI_API_KEY: ecs.Secret.fromSecretsManager(
+                secret,
+                'OPENAI_API_KEY'
+              ),
+            },
+            taskRole,
+          },
 
-    const nlb = new aws_elasticloadbalancingv2.NetworkLoadBalancer(
-      this,
-      'NLB',
-      {
-        vpc,
-        vpcSubnets: publicSubnets,
-      }
-    );
-
-    // Step 7: Create a VPC Link for Private Service Access
-    const vpcLink = new apigateway.VpcLink(this, 'VpcLink', {
-      targets: [nlb], // Connect VPC Link to the ECS service via Cloud Map
-    });
+          memoryLimitMiB: 512,
+          cpu: 256,
+          runtimePlatform: {
+            operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
+            cpuArchitecture: ecs.CpuArchitecture.ARM64,
+          },
+          publicLoadBalancer: true, // Ensure the ALB is public
+          // securityGroups
+        }
+      );
 
     const hostedZone = route53.HostedZone.fromLookup(this, `HostedZone`, {
       domainName: 'taigerconsultancy-portal.com', // Replace with your domain name
@@ -351,48 +288,16 @@ export class EcsFargateWithSsmStack extends Stack {
     const apiResource = api.root.addResource('api');
     const proxyResource = apiResource.addResource('{proxy+}'); // Wildcard resource `/api/{proxy+}`
 
-    const targetGroup = new aws_elasticloadbalancingv2.NetworkTargetGroup(
-      this,
-      'TargetGroup',
+    // Check if `cloudMapService` is available before using it
+    const albIntegration = new apigateway.HttpIntegration(
+      `http://${fargateService.loadBalancer.loadBalancerDnsName}`,
       {
-        vpc,
-        port: 3000, // ECS container port
-        protocol: aws_elasticloadbalancingv2.Protocol.TCP,
-        targetType: aws_elasticloadbalancingv2.TargetType.IP,
-        // healthCheck: {
-        //   path: '/health', // Health check path
-        //   interval: Duration.seconds(30), // Health check interval
-        // },
+        httpMethod: 'ANY',
+        proxy: true, // Enable proxy integration (forward all traffic)
       }
     );
 
-    ecsService.attachToNetworkTargetGroup(targetGroup);
-
-    const listener = nlb.addListener('Listener', {
-      port: 80, // The port your NLB listens on (e.g., HTTP or HTTPS)
-    });
-
-    listener.addTargetGroups('AddTargetGroups', ...[targetGroup]);
-
-    // Check if `cloudMapService` is available before using it
-    if (ecsService.cloudMapService) {
-      proxyResource.addMethod(
-        'ANY',
-        new apigateway.Integration({
-          type: apigateway.IntegrationType.HTTP,
-          uri: `http://${nlb.loadBalancerDnsName}:80`, // use NLB instead
-          integrationHttpMethod: 'ANY',
-          options: {
-            connectionType: apigateway.ConnectionType.VPC_LINK,
-            vpcLink: vpcLink,
-          },
-        })
-      );
-    } else {
-      throw new Error(
-        'ECS service does not have a CloudMap service associated with it.'
-      );
-    }
+    proxyResource.addMethod('ANY', albIntegration);
 
     new apigateway.BasePathMapping(this, 'BasePathMapping', {
       domainName: domainName,
