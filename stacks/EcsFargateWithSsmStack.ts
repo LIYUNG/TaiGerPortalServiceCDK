@@ -1,7 +1,9 @@
 import {
   aws_ecs_patterns,
   aws_secretsmanager,
+  Duration,
   Fn,
+  RemovalPolicy,
   Stack,
   StackProps,
 } from 'aws-cdk-lib';
@@ -13,6 +15,7 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
+import * as logs from 'aws-cdk-lib/aws-logs'; // For CloudWatch Log resources
 import { Construct } from 'constructs';
 
 import { AWS_ACCOUNT } from '../configuration';
@@ -74,6 +77,12 @@ export class EcsFargateWithSsmStack extends Stack {
       'TaiGerSecret',
       props.secretArn
     );
+
+    new logs.LogGroup(this, 'LogGroup', {
+      logGroupName: `taiger-portal-service-${props.domainStage}`,
+      retention: logs.RetentionDays.SIX_MONTHS,
+      removalPolicy: RemovalPolicy.DESTROY, // Adjust based on your preference
+    });
 
     const taskRole = new iam.Role(this, 'TaskRole', {
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
@@ -251,6 +260,17 @@ export class EcsFargateWithSsmStack extends Stack {
           securityGroups: [securityGroup],
         }
       );
+
+    // Setup AutoScaling policy
+    const scaling = fargateService.service.autoScaleTaskCount({
+      maxCapacity: 2,
+    });
+
+    scaling.scaleOnCpuUtilization('CpuScaling', {
+      targetUtilizationPercent: 60,
+      scaleInCooldown: Duration.seconds(60),
+      scaleOutCooldown: Duration.seconds(60),
+    });
 
     const hostedZone = route53.HostedZone.fromLookup(this, `HostedZone`, {
       domainName: 'taigerconsultancy-portal.com', // Replace with your domain name
