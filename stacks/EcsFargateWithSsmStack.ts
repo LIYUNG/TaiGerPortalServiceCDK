@@ -41,14 +41,6 @@ export class EcsFargateWithSsmStack extends Stack {
           name: 'Public',
           subnetType: ec2.SubnetType.PUBLIC,
         },
-        {
-          name: 'Private',
-          subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
-        },
-        {
-          name: 'Isolated',
-          subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
-        },
       ],
     });
 
@@ -146,7 +138,7 @@ export class EcsFargateWithSsmStack extends Stack {
       this,
       'ImportedEcrRepo',
       Fn.importValue('EcrRepoUri')
-    ); 
+    );
 
     // Step 6: Fargate Service
     // Instantiate a Fargate service in the public subnet
