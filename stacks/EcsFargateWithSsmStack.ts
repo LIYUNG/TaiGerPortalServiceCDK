@@ -17,7 +17,7 @@ import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import { Construct } from 'constructs';
 
 import { AWS_ACCOUNT } from '../configuration';
-import { HealthCheck } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { ApplicationProtocol, HealthCheck } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 
 interface EcsFargateWithSsmStackProps extends StackProps {
   stageName: string;
@@ -270,9 +270,10 @@ export class EcsFargateWithSsmStack extends Stack {
         }
       );
 
-    fargateService.listener.addTargets('ECS', {
+    fargateService.listener.addTargets('ECSHealthTarget', {
       port: 3000, // The port on which ECS container listens
       targets: [fargateService.service],
+      protocol: ApplicationProtocol.HTTP,
       healthCheck: healthCheck, // Health check configuration
     });
 
