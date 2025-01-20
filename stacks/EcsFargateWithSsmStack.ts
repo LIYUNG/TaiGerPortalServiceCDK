@@ -302,6 +302,10 @@ export class EcsFargateWithSsmStack extends Stack {
       this,
       `TaiGerPortalService-${props.domainStage}`,
       {
+        defaultCorsPreflightOptions: {
+          allowOrigins: ['*'], // Restrict as necessary
+          allowHeaders: ['Content-Type', 'Authorization', 'tenantId'],
+        },
         restApiName: `TaiGer Portal Service - ${props.domainStage}`,
         description: `API for TaiGer Portal - ${props.domainStage}`,
         deployOptions: {
