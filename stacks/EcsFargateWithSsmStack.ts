@@ -246,6 +246,7 @@ export class EcsFargateWithSsmStack extends Stack {
             operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
             cpuArchitecture: ecs.CpuArchitecture.ARM64,
           },
+          assignPublicIp: true,
           publicLoadBalancer: true, // Ensure the ALB is public
           securityGroups: [securityGroup],
         }
