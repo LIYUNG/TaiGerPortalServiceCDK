@@ -261,6 +261,18 @@ export class EcsFargateWithSsmStack extends Stack {
         }
       );
 
+    // Access the target group created for the ALB
+    const targetGroup = fargateService.targetGroup;
+
+    // Configure the health check for the target group
+    targetGroup.configureHealthCheck({
+      path: '/health', // Update this to the correct health check endpoint
+      interval: Duration.seconds(30), // Health check interval
+      timeout: Duration.seconds(5), // Timeout for health check
+      healthyThresholdCount: 3, // Threshold for marking healthy
+      unhealthyThresholdCount: 2, // Threshold for marking unhealthy
+    });
+
     // Setup AutoScaling policy
     const scaling = fargateService.service.autoScaleTaskCount({
       maxCapacity: 2,
