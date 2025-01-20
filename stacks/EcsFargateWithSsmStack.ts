@@ -1,7 +1,6 @@
 import {
   aws_ecs_patterns,
   aws_secretsmanager,
-  Duration,
   Fn,
   Stack,
   StackProps,
@@ -17,7 +16,6 @@ import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import { Construct } from 'constructs';
 
 import { AWS_ACCOUNT } from '../configuration';
-import { ApplicationProtocol, HealthCheck } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 
 interface EcsFargateWithSsmStackProps extends StackProps {
   stageName: string;
@@ -148,16 +146,7 @@ export class EcsFargateWithSsmStack extends Stack {
       this,
       'ImportedEcrRepo',
       Fn.importValue('EcrRepoUri')
-    );
-
-    // Define the health check settings
-    const healthCheck: HealthCheck = {
-      path: '/health', // URL path for health check, make sure to implement this endpoint in your Node.js app
-      interval: Duration.seconds(30), // Interval between health checks
-      timeout: Duration.seconds(5), // Timeout for each health check request
-      healthyThresholdCount: 2, // Number of successful checks before marking the container as healthy
-      unhealthyThresholdCount: 2, // Number of failed checks before marking the container as unhealthy
-    };
+    ); 
 
     // Step 6: Fargate Service
     // Instantiate a Fargate service in the public subnet
@@ -269,13 +258,6 @@ export class EcsFargateWithSsmStack extends Stack {
           securityGroups: [securityGroup],
         }
       );
-
-    fargateService.listener.addTargets('ECSHealthTarget', {
-      port: 3000, // The port on which ECS container listens
-      targets: [fargateService.service],
-      protocol: ApplicationProtocol.HTTP,
-      healthCheck: healthCheck, // Health check configuration
-    });
 
     const hostedZone = route53.HostedZone.fromLookup(this, `HostedZone`, {
       domainName: 'taigerconsultancy-portal.com', // Replace with your domain name
