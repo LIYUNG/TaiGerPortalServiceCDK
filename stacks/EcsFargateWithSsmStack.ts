@@ -36,12 +36,6 @@ export class EcsFargateWithSsmStack extends Stack {
   ) {
     super(scope, id, props);
 
-    // // Step 0: ECR Repository
-    // new ecr.Repository(this, `Ecr-${props.stageName}`, {
-    //   repositoryName: `taiger-portal-service`,
-    //   removalPolicy: RemovalPolicy.DESTROY, // Optional: To remove the repository when the stack is deleted
-    // });
-
     // Step 1: VPC for ECS
     const vpc = new ec2.Vpc(this, `Vpc`, {
       maxAzs: 2,
@@ -375,9 +369,7 @@ export class EcsFargateWithSsmStack extends Stack {
     ecsService.attachToNetworkTargetGroup(targetGroup);
 
     const listener = nlb.addListener('Listener', {
-      port: 443, // The port your NLB listens on (e.g., HTTP or HTTPS)
-      protocol: aws_elasticloadbalancingv2.Protocol.TLS, // HTTPS
-      certificates: [certificate], // Attach your SSL/TLS certificate
+      port: 80, // The port your NLB listens on (e.g., HTTP or HTTPS)
     });
 
     listener.addTargetGroups('AddTargetGroups', ...[targetGroup]);
@@ -388,7 +380,7 @@ export class EcsFargateWithSsmStack extends Stack {
         'ANY',
         new apigateway.Integration({
           type: apigateway.IntegrationType.HTTP,
-          uri: `https://${nlb.loadBalancerDnsName}:443`, // use NLB instead
+          uri: `http://${nlb.loadBalancerDnsName}:80`, // use NLB instead
           integrationHttpMethod: 'ANY',
           options: {
             connectionType: apigateway.ConnectionType.VPC_LINK,
