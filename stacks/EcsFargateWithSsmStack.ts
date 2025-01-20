@@ -110,7 +110,7 @@ export class EcsFargateWithSsmStack extends Stack {
       new iam.PolicyStatement({
         actions: ['execute-api:Invoke'],
         resources: [
-          `arn:aws:execute-api:${props.env?.region}:${AWS_ACCOUNT}:cnmfjn7m6j/*/*/*`, // Replace with your API Gateway ARN
+          `arn:aws:execute-api:${props.env?.region}:${AWS_ACCOUNT}:*/*/*/*`, // Replace with your API Gateway ARN
         ],
       })
     );
