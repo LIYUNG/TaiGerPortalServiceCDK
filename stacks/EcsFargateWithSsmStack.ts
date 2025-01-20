@@ -1,6 +1,7 @@
 import {
   aws_ecs_patterns,
   aws_secretsmanager,
+  Duration,
   Fn,
   Stack,
   StackProps,
@@ -16,6 +17,7 @@ import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import { Construct } from 'constructs';
 
 import { AWS_ACCOUNT } from '../configuration';
+import { HealthCheck } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 
 interface EcsFargateWithSsmStackProps extends StackProps {
   stageName: string;
@@ -64,9 +66,10 @@ export class EcsFargateWithSsmStack extends Stack {
 
     // Allow inbound traffic only from CloudFront's IP ranges
     // TODO regionalize
-    const cloudfrontPrefixList = ec2.Peer.prefixList('pl-3b927c52'); // Managed prefix list for CloudFront
+    // const cloudfrontPrefixList = ec2.Peer.prefixList('pl-3b927c52'); // Managed prefix list for CloudFront
+    const anyIp4 = ec2.Peer.anyIpv4();
     securityGroup.addIngressRule(
-      cloudfrontPrefixList,
+      anyIp4,
       ec2.Port.tcp(3000), // Adjust this if your ECS service listens on a different port
       'Allow inbound access from CloudFront IP ranges'
     );
@@ -146,6 +149,15 @@ export class EcsFargateWithSsmStack extends Stack {
       'ImportedEcrRepo',
       Fn.importValue('EcrRepoUri')
     );
+
+    // Define the health check settings
+    const healthCheck: HealthCheck = {
+      path: '/health', // URL path for health check, make sure to implement this endpoint in your Node.js app
+      interval: Duration.seconds(30), // Interval between health checks
+      timeout: Duration.seconds(5), // Timeout for each health check request
+      healthyThresholdCount: 2, // Number of successful checks before marking the container as healthy
+      unhealthyThresholdCount: 2, // Number of failed checks before marking the container as unhealthy
+    };
 
     // Step 6: Fargate Service
     // Instantiate a Fargate service in the public subnet
@@ -247,7 +259,6 @@ export class EcsFargateWithSsmStack extends Stack {
             },
             taskRole,
           },
-
           memoryLimitMiB: 512,
           cpu: 256,
           runtimePlatform: {
@@ -255,9 +266,15 @@ export class EcsFargateWithSsmStack extends Stack {
             cpuArchitecture: ecs.CpuArchitecture.ARM64,
           },
           publicLoadBalancer: true, // Ensure the ALB is public
-          // securityGroups
+          securityGroups: [securityGroup],
         }
       );
+
+    fargateService.listener.addTargets('ECS', {
+      port: 3000, // The port on which ECS container listens
+      targets: [fargateService.service],
+      healthCheck: healthCheck, // Health check configuration
+    });
 
     const hostedZone = route53.HostedZone.fromLookup(this, `HostedZone`, {
       domainName: 'taigerconsultancy-portal.com', // Replace with your domain name
