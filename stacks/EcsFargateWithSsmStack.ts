@@ -323,20 +323,20 @@ export class EcsFargateWithSsmStack extends Stack {
 
     // Check if `cloudMapService` is available before using it
     const albIntegration = new apigateway.HttpIntegration(
-      `http://${fargateService.loadBalancer.loadBalancerDnsName}`,
+      `http://${fargateService.loadBalancer.loadBalancerDnsName}/{proxy}`,
       {
         httpMethod: 'ANY',
         proxy: true, // Enable proxy integration (forward all traffic)
-        options:{
+        options: {
           requestParameters: {
-            "integration.request.path.proxy": "method.request.path.proxy"
+            'integration.request.path.proxy': 'method.request.path.proxy',
           },
           // integrationResponses: [
           //   {
           //     statusCode: "200"
           //   }
           // ]
-        }
+        },
       }
     );
 
