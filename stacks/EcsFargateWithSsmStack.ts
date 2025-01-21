@@ -318,7 +318,7 @@ export class EcsFargateWithSsmStack extends Stack {
 
     // Create ALB integration
     const albIntegration = new apigateway.HttpIntegration(
-      `http://${fargateService.loadBalancer.loadBalancerDnsName}/{proxy}`, // Include `{proxy}` in backend path
+      `http://${fargateService.loadBalancer.loadBalancerDnsName}/{proxy+}`, // Include `{proxy}` in backend path
       {
         httpMethod: 'ANY',
         proxy: true,
