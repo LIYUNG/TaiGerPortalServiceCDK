@@ -118,6 +118,15 @@ export class EcsFargateStack extends Stack {
 
     taskRole.addToPolicy(
       new iam.PolicyStatement({
+        actions: ['sts:AssumeRole'],
+        resources: [
+          `arn:aws:execute-api:${props.env?.region}:${AWS_ACCOUNT}:*/*/*/*`, // Replace with your API Gateway ARN
+        ],
+      })
+    );
+
+    taskRole.addToPolicy(
+      new iam.PolicyStatement({
         actions: [
           'secretsmanager:GetSecretValue', // Required to fetch secrets
         ],
