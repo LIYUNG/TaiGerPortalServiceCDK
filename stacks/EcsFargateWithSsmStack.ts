@@ -344,7 +344,6 @@ export class EcsFargateWithSsmStack extends Stack {
       domainName: domainName,
       restApi: api,
       stage: api.deploymentStage,
-      basePath: '',
     });
 
     // Step 6: Create Route 53 Record to point to the API Gateway
