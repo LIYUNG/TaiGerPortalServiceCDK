@@ -321,28 +321,38 @@ export class EcsFargateWithSsmStack extends Stack {
     const imagesResource = api.root.addResource('images');
     const imagesProxyResource = imagesResource.addResource('{proxy+}'); // Wildcard resource `/api/{proxy+}`
 
-    // Check if `cloudMapService` is available before using it
+    // Create ALB integration
     const albIntegration = new apigateway.HttpIntegration(
-      `http://${fargateService.loadBalancer.loadBalancerDnsName}/{proxy}`,
+      `http://${fargateService.loadBalancer.loadBalancerDnsName}/{proxy}`, // Include `{proxy}` in backend path
       {
         httpMethod: 'ANY',
-        proxy: true, // Enable proxy integration (forward all traffic)
+        proxy: true,
         options: {
           requestParameters: {
-            'integration.request.path.proxy': 'method.request.path.proxy',
+            'integration.request.path.proxy': 'method.request.path.proxy', // Map the proxy path
           },
-          // integrationResponses: [
-          //   {
-          //     statusCode: "200"
-          //   }
-          // ]
         },
       }
     );
 
-    proxyResource.addMethod('ANY', albIntegration);
-    authProxyResource.addMethod('ANY', albIntegration);
-    imagesProxyResource.addMethod('ANY', albIntegration);
+    // Add methods with path parameter mapping
+    proxyResource.addMethod('ANY', albIntegration, {
+      requestParameters: {
+        'method.request.path.proxy': true, // Enable path parameter
+      },
+    });
+
+    authProxyResource.addMethod('ANY', albIntegration, {
+      requestParameters: {
+        'method.request.path.proxy': true,
+      },
+    });
+
+    imagesProxyResource.addMethod('ANY', albIntegration, {
+      requestParameters: {
+        'method.request.path.proxy': true,
+      },
+    });
 
     new apigateway.BasePathMapping(this, 'BasePathMapping', {
       domainName: domainName,
