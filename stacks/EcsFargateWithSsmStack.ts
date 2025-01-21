@@ -314,12 +314,7 @@ export class EcsFargateWithSsmStack extends Stack {
       }
     );
 
-    const apiResource = api.root.addResource('api');
-    const proxyResource = apiResource.addResource('{proxy+}'); // Wildcard resource `/api/{proxy+}`
-    const authResource = api.root.addResource('auth');
-    const authProxyResource = authResource.addResource('{proxy+}'); // Wildcard resource `/api/{proxy+}`
-    const imagesResource = api.root.addResource('images');
-    const imagesProxyResource = imagesResource.addResource('{proxy+}'); // Wildcard resource `/api/{proxy+}`
+    const proxyResource = api.root.addResource('{proxy+}');
 
     // Create ALB integration
     const albIntegration = new apigateway.HttpIntegration(
@@ -339,18 +334,6 @@ export class EcsFargateWithSsmStack extends Stack {
     proxyResource.addMethod('ANY', albIntegration, {
       requestParameters: {
         'method.request.path.proxy': true, // Enable path parameter
-      },
-    });
-
-    authProxyResource.addMethod('ANY', albIntegration, {
-      requestParameters: {
-        'method.request.path.proxy': true,
-      },
-    });
-
-    imagesProxyResource.addMethod('ANY', albIntegration, {
-      requestParameters: {
-        'method.request.path.proxy': true,
       },
     });
 
