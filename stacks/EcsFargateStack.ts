@@ -334,9 +334,9 @@ export class EcsFargateStack extends Stack {
           requestParameters: {
             'integration.request.path.proxy': 'method.request.path.proxy', // Map the proxy path
           },
-          requestTemplates: {
-            'application/json': '{ "statusCode": 200 }',
-          },
+          // requestTemplates: {
+          //   'application/json': '{ "statusCode": 200 }',
+          // },
         },
       }
     );
