@@ -20,24 +20,25 @@ import { Construct } from 'constructs';
 
 import { AWS_ACCOUNT } from '../configuration';
 
-interface EcsFargateWithSsmStackProps extends StackProps {
+interface EcsFargateStackProps extends StackProps {
   stageName: string;
   domainStage: string;
   isProd: boolean;
   secretArn: string;
 }
 
-export class EcsFargateWithSsmStack extends Stack {
+export class EcsFargateStack extends Stack {
   constructor(
     scope: Construct,
     id: string,
-    props: EcsFargateWithSsmStackProps
+    props: EcsFargateStackProps
   ) {
     super(scope, id, props);
 
     // Step 1: VPC for ECS
     const vpc = new ec2.Vpc(this, `Vpc`, {
       maxAzs: 2,
+      vpcName: `taiger-portal-service-vpc-${props.domainStage}`,
       natGateways: 0, // Number of NAT Gateways
       subnetConfiguration: [
         {
@@ -69,6 +70,7 @@ export class EcsFargateWithSsmStack extends Stack {
 
     // Step 2: ECS Cluster
     const cluster = new ecs.Cluster(this, 'EcsCluster', {
+      clusterName: `taiger-portal-service-cluster-${props.domainStage}`,
       vpc,
     });
 
@@ -85,6 +87,7 @@ export class EcsFargateWithSsmStack extends Stack {
     });
 
     const taskRole = new iam.Role(this, 'TaskRole', {
+      roleName: `taiger-portal-service-role-${props.domainStage}`,
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
     });
 
@@ -156,6 +159,7 @@ export class EcsFargateWithSsmStack extends Stack {
         this,
         'FargateService',
         {
+          serviceName: `taiger-portal-service-fargate-${props.domainStage}`,
           cluster,
           taskImageOptions: {
             image: ecs.ContainerImage.fromEcrRepository(ecrRepo, 'latest'), // Replace with your Node.js app image
@@ -306,7 +310,7 @@ export class EcsFargateWithSsmStack extends Stack {
           allowOrigins: ['*'], // Restrict as necessary
           allowHeaders: ['Content-Type', 'Authorization', 'tenantId'],
         },
-        restApiName: `TaiGer Portal Service - ${props.domainStage}`,
+        restApiName: `taiger-portal-service-api-${props.domainStage}`,
         description: `API for TaiGer Portal - ${props.domainStage}`,
         deployOptions: {
           stageName: props.domainStage,

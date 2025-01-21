@@ -1,4 +1,4 @@
-import { EcsFargateWithSsmStack } from '../stacks/EcsFargateWithSsmStack';
+import { EcsFargateStack } from '../stacks/EcsFargateStack';
 import { Stage, StageProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 // import { ApiGatewayCustomDomainStack } from '../stacks/ApiGatewayCustomDomainStack';
@@ -15,9 +15,9 @@ export class PipelineAppStage extends Stage {
   constructor(scope: Construct, id: string, props: DeploymentProps) {
     super(scope, id, props);
 
-    new EcsFargateWithSsmStack(
+    new EcsFargateStack(
       this,
-      `EcsFargateWithSsmStack-${props.stageName}`,
+      `EcsFargateStack-${props.stageName}`,
       {
         env: props.env,
         stageName: props.stageName,
