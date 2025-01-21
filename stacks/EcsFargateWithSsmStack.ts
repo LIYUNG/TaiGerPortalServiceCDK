@@ -310,6 +310,8 @@ export class EcsFargateWithSsmStack extends Stack {
         description: `API for TaiGer Portal - ${props.domainStage}`,
         deployOptions: {
           stageName: props.domainStage,
+          loggingLevel: apigateway.MethodLoggingLevel.INFO,
+          dataTraceEnabled: true,
         },
       }
     );
@@ -318,13 +320,16 @@ export class EcsFargateWithSsmStack extends Stack {
 
     // Create ALB integration
     const albIntegration = new apigateway.HttpIntegration(
-      `http://${fargateService.loadBalancer.loadBalancerDnsName}/{proxy+}`, // Include `{proxy}` in backend path
+      `http://${fargateService.loadBalancer.loadBalancerDnsName}/{proxy}`, // Include `{proxy}` in backend path
       {
         httpMethod: 'ANY',
         proxy: true,
         options: {
           requestParameters: {
             'integration.request.path.proxy': 'method.request.path.proxy', // Map the proxy path
+          },
+          requestTemplates: {
+            'application/json': '{ "statusCode": 200 }',
           },
         },
       }
