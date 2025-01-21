@@ -327,6 +327,16 @@ export class EcsFargateWithSsmStack extends Stack {
       {
         httpMethod: 'ANY',
         proxy: true, // Enable proxy integration (forward all traffic)
+        options:{
+          requestParameters: {
+            "integration.request.path.proxy": "method.request.path.proxy"
+          },
+          // integrationResponses: [
+          //   {
+          //     statusCode: "200"
+          //   }
+          // ]
+        }
       }
     );
 
