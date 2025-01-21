@@ -310,8 +310,6 @@ export class EcsFargateWithSsmStack extends Stack {
         description: `API for TaiGer Portal - ${props.domainStage}`,
         deployOptions: {
           stageName: props.domainStage,
-          loggingLevel: apigateway.MethodLoggingLevel.INFO,
-          dataTraceEnabled: true,
         },
       }
     );
