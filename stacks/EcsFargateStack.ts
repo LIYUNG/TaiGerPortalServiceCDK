@@ -28,11 +28,7 @@ interface EcsFargateStackProps extends StackProps {
 }
 
 export class EcsFargateStack extends Stack {
-  constructor(
-    scope: Construct,
-    id: string,
-    props: EcsFargateStackProps
-  ) {
+  constructor(scope: Construct, id: string, props: EcsFargateStackProps) {
     super(scope, id, props);
 
     // Step 1: VPC for ECS
@@ -245,6 +241,14 @@ export class EcsFargateStack extends Stack {
               AWS_LOG_GROUP: ecs.Secret.fromSecretsManager(
                 secret,
                 'AWS_LOG_GROUP'
+              ),
+              AWS_TRANSCRIPT_ANALYSER_ROLE: ecs.Secret.fromSecretsManager(
+                secret,
+                'AWS_TRANSCRIPT_ANALYSER_ROLE'
+              ),
+              AWS_TRANSCRIPT_ANALYSER_APIG_URL: ecs.Secret.fromSecretsManager(
+                secret,
+                'AWS_TRANSCRIPT_ANALYSER_APIG_URL'
               ),
               OPENAI_API_KEY: ecs.Secret.fromSecretsManager(
                 secret,
