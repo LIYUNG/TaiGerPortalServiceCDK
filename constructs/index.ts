@@ -1,2 +1,2 @@
-export * from './api-gateway';
-export * from './secrets';
+export * from "./api-gateway";
+export * from "./secrets";
