@@ -19,6 +19,7 @@ import * as logs from "aws-cdk-lib/aws-logs"; // For CloudWatch Log resources
 import { Construct } from "constructs";
 
 import { APP_NAME, APP_NAME_TAIGER_SERVICE, AWS_ACCOUNT, DOMAIN_NAME } from "../configuration";
+import { EcsDeploymentGroup } from "aws-cdk-lib/aws-codedeploy";
 
 interface EcsFargateStackProps extends StackProps {
     stageName: string;
@@ -248,7 +249,10 @@ export class EcsFargateStack extends Stack {
                 },
                 assignPublicIp: true,
                 publicLoadBalancer: true, // Ensure the ALB is public
-                securityGroups: [securityGroup]
+                securityGroups: [securityGroup],
+                deploymentController: {
+                    type: ecs.DeploymentControllerType.CODE_DEPLOY
+                }
             }
         );
 
