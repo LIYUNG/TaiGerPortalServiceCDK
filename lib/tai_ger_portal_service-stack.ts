@@ -16,7 +16,7 @@ import {
 import { PipelineAppStage } from "./app-stage";
 import { Region, STAGES } from "../constants";
 import { LinuxBuildImage } from "aws-cdk-lib/aws-codebuild";
-import { CfnReplicationConfiguration, Repository, TagStatus } from "aws-cdk-lib/aws-ecr";
+import { CfnReplicationConfiguration, Repository } from "aws-cdk-lib/aws-ecr";
 
 export class TaiGerPortalServiceStack extends Stack {
     constructor(scope: Construct, id: string, props?: StackProps) {
@@ -127,9 +127,6 @@ export class TaiGerPortalServiceStack extends Stack {
             dockerEnabledForSelfMutation: true
         });
 
-        // const buidlStage = new EcrBuildStage(this, `ECRBuild-Stage`, {
-        //   env: { region: Region.IAD, account: AWS_ACCOUNT },
-        // });
         // pipeline.addStage(buidlStage);
         STAGES.forEach(({ stageName, env, domainStage, isProd, secretArn }) => {
             const stage = new PipelineAppStage(this, `${stageName}-Stage`, {
