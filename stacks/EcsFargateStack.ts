@@ -313,7 +313,8 @@ export class EcsFargateStack extends Stack {
                 description: `API for TaiGer Portal - ${props.domainStage}`,
                 deployOptions: {
                     stageName: props.domainStage
-                }
+                },
+                binaryMediaTypes: ["*/*"] // Enable binary support for all media types
             }
         );
 
