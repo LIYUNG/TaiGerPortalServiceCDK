@@ -7,4 +7,6 @@ export const GITHUB_OWNER = "LIYUNG";
 export const GITHUB_PACKAGE_BRANCH = "main";
 
 export const DOMAIN_NAME = "taigerconsultancy-portal.com";
-export const APP_NAME_TAIGER_SERVICE = "TaiGerPortalService";
+export const APP_NAME_TAIGER_SERVICE = GITHUB_REPO;
+export const APP_NAME = "taiger-portal-service";
+export const ECR_REPO_NAME = `${APP_NAME}-repo`;

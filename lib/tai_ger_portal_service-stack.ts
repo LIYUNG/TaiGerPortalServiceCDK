@@ -7,6 +7,7 @@ import { Construct } from "constructs";
 import {
     APP_NAME_TAIGER_SERVICE,
     AWS_ACCOUNT,
+    ECR_REPO_NAME,
     GITHUB_OWNER,
     GITHUB_PACKAGE_BRANCH,
     GITHUB_REPO,
@@ -43,24 +44,28 @@ export class TaiGerPortalServiceStack extends Stack {
         );
 
         // Step 1: Create an ECR repository
-        const ecrRepo = new Repository(this, "MyEcrRepo", {
-            repositoryName: "taiger-portal-service-repo"
+        const ecrRepo = new Repository(this, `${APP_NAME_TAIGER_SERVICE}-EcrRepo`, {
+            repositoryName: ECR_REPO_NAME
         });
 
-        new CfnReplicationConfiguration(this, "MyCfnReplicationConfiguration", {
-            replicationConfiguration: {
-                rules: [
-                    {
-                        destinations: [
-                            {
-                                region: "us-west-2",
-                                registryId: AWS_ACCOUNT
-                            }
-                        ]
-                    }
-                ]
+        new CfnReplicationConfiguration(
+            this,
+            `${APP_NAME_TAIGER_SERVICE}-CfnReplicationConfiguration`,
+            {
+                replicationConfiguration: {
+                    rules: [
+                        {
+                            destinations: [
+                                {
+                                    region: "us-west-2",
+                                    registryId: AWS_ACCOUNT
+                                }
+                            ]
+                        }
+                    ]
+                }
             }
-        });
+        );
 
         // Apply the lifecycle policy to the repository
         ecrRepo.addLifecycleRule({
@@ -70,12 +75,12 @@ export class TaiGerPortalServiceStack extends Stack {
         });
 
         // Export repository URI as output
-        new CfnOutput(this, "EcrRepoUri", {
+        new CfnOutput(this, `${APP_NAME_TAIGER_SERVICE}-EcrRepoUri`, {
             value: ecrRepo.repositoryName,
-            exportName: "EcrRepoUri"
+            exportName: `${APP_NAME_TAIGER_SERVICE}-EcrRepoUri`
         });
 
-        // TODO run docker comment.
+        // run docker comment.
         const prebuild = new CodeBuildStep("Prebuild", {
             input: sourceCode,
             primaryOutputDirectory: "./api",
@@ -127,7 +132,6 @@ export class TaiGerPortalServiceStack extends Stack {
             dockerEnabledForSelfMutation: true
         });
 
-        // pipeline.addStage(buidlStage);
         STAGES.forEach(({ stageName, env, domainStage, isProd, secretArn }) => {
             const stage = new PipelineAppStage(this, `${stageName}-Stage`, {
                 env,

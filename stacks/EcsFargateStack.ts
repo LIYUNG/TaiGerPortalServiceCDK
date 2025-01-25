@@ -18,7 +18,7 @@ import * as route53Targets from "aws-cdk-lib/aws-route53-targets";
 import * as logs from "aws-cdk-lib/aws-logs"; // For CloudWatch Log resources
 import { Construct } from "constructs";
 
-import { AWS_ACCOUNT } from "../configuration";
+import { APP_NAME, APP_NAME_TAIGER_SERVICE, AWS_ACCOUNT, DOMAIN_NAME } from "../configuration";
 
 interface EcsFargateStackProps extends StackProps {
     stageName: string;
@@ -32,9 +32,9 @@ export class EcsFargateStack extends Stack {
         super(scope, id, props);
 
         // Step 1: VPC for ECS
-        const vpc = new ec2.Vpc(this, `Vpc`, {
+        const vpc = new ec2.Vpc(this, `${APP_NAME_TAIGER_SERVICE}-Vpc`, {
             maxAzs: 2,
-            vpcName: `taiger-portal-service-vpc-${props.domainStage}`,
+            vpcName: `${APP_NAME}-vpc-${props.domainStage}`,
             natGateways: 0, // Number of NAT Gateways
             subnetConfiguration: [
                 {
@@ -44,11 +44,15 @@ export class EcsFargateStack extends Stack {
             ]
         });
 
-        const securityGroup = new ec2.SecurityGroup(this, "EcsFargateSecurityGroup", {
-            vpc,
-            allowAllOutbound: true, // You can specify more specific rules if needed
-            securityGroupName: "EcsFargateSecurityGroup"
-        });
+        const securityGroup = new ec2.SecurityGroup(
+            this,
+            `${APP_NAME_TAIGER_SERVICE}-EcsFargateSecurityGroup`,
+            {
+                vpc,
+                allowAllOutbound: true, // You can specify more specific rules if needed
+                securityGroupName: `${APP_NAME_TAIGER_SERVICE}-EcsFargateSecurityGroup`
+            }
+        );
 
         // Allow inbound traffic only from CloudFront's IP ranges
         // TODO regionalize
@@ -61,25 +65,25 @@ export class EcsFargateStack extends Stack {
         );
 
         // Step 2: ECS Cluster
-        const cluster = new ecs.Cluster(this, "EcsCluster", {
-            clusterName: `taiger-portal-service-cluster-${props.domainStage}`,
+        const cluster = new ecs.Cluster(this, `${APP_NAME}-EcsCluster`, {
+            clusterName: `${APP_NAME}-cluster-${props.domainStage}`,
             vpc
         });
 
         const secret = aws_secretsmanager.Secret.fromSecretCompleteArn(
             this,
-            "TaiGerSecret",
+            `${APP_NAME_TAIGER_SERVICE}-Secret`,
             props.secretArn
         );
 
-        new logs.LogGroup(this, "LogGroup", {
-            logGroupName: `taiger-portal-service-${props.domainStage}`,
+        new logs.LogGroup(this, `${APP_NAME_TAIGER_SERVICE}-LogGroup`, {
+            logGroupName: `${APP_NAME}-${props.domainStage}`,
             retention: logs.RetentionDays.SIX_MONTHS,
             removalPolicy: RemovalPolicy.DESTROY // Adjust based on your preference
         });
 
         const taskRole = new iam.Role(this, "TaskRole", {
-            roleName: `taiger-portal-service-role-${props.domainStage}`,
+            roleName: `${APP_NAME}-role-${props.domainStage}`,
             assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com")
         });
 
@@ -88,7 +92,7 @@ export class EcsFargateStack extends Stack {
             new iam.PolicyStatement({
                 actions: ["logs:DescribeLogStreams", "logs:CreateLogStream", "logs:PutLogEvents"],
                 resources: [
-                    `arn:aws:logs:${props.env?.region}:${AWS_ACCOUNT}:log-group:taiger-portal-service-${props.domainStage}*`
+                    `arn:aws:logs:${props.env?.region}:${AWS_ACCOUNT}:log-group:${APP_NAME}-${props.domainStage}*`
                 ]
             })
         );
@@ -141,16 +145,16 @@ export class EcsFargateStack extends Stack {
         const ecrRepo = ecr.Repository.fromRepositoryName(
             this,
             "ImportedEcrRepo",
-            Fn.importValue("EcrRepoUri")
+            Fn.importValue(`${APP_NAME_TAIGER_SERVICE}-EcrRepoUri`)
         );
 
         // Step 6: Fargate Service
         // Instantiate a Fargate service in the public subnet
         const fargateService = new aws_ecs_patterns.ApplicationLoadBalancedFargateService(
             this,
-            "FargateService",
+            `${APP_NAME_TAIGER_SERVICE}-FargateService`,
             {
-                serviceName: `taiger-portal-service-fargate-${props.domainStage}`,
+                serviceName: `${APP_NAME}-fargate-${props.domainStage}`,
                 cluster,
                 taskImageOptions: {
                     image: ecs.ContainerImage.fromEcrRepository(ecrRepo, "latest"), // Replace with your Node.js app image
@@ -272,30 +276,42 @@ export class EcsFargateStack extends Stack {
         });
 
         const hostedZone = route53.HostedZone.fromLookup(this, `HostedZone`, {
-            domainName: "taigerconsultancy-portal.com" // Replace with your domain name
+            domainName: DOMAIN_NAME // Replace with your domain name
         });
 
-        const certificate = new certmgr.Certificate(this, "ApiCertificate", {
-            domainName: `${props.domainStage}.api.taigerconsultancy-portal.com`, // Replace with your subdomain
-            validation: certmgr.CertificateValidation.fromDns(hostedZone)
-        });
-
-        const domainName = new apigateway.DomainName(this, "CustomDomain", {
-            domainName: `${props.domainStage}.api.taigerconsultancy-portal.com`, // Replace with your custom subdomain
-            certificate
-        });
-
-        const api = new apigateway.RestApi(this, `TaiGerPortalService-${props.domainStage}`, {
-            defaultCorsPreflightOptions: {
-                allowOrigins: ["*"], // Restrict as necessary
-                allowHeaders: ["Content-Type", "Authorization", "tenantId"]
-            },
-            restApiName: `taiger-portal-service-api-${props.domainStage}`,
-            description: `API for TaiGer Portal - ${props.domainStage}`,
-            deployOptions: {
-                stageName: props.domainStage
+        const certificate = new certmgr.Certificate(
+            this,
+            `${APP_NAME_TAIGER_SERVICE}-ApiCertificate`,
+            {
+                domainName: `${props.domainStage}.api.${DOMAIN_NAME}`, // Replace with your subdomain
+                validation: certmgr.CertificateValidation.fromDns(hostedZone)
             }
-        });
+        );
+
+        const domainName = new apigateway.DomainName(
+            this,
+            `${APP_NAME_TAIGER_SERVICE}-CustomDomain`,
+            {
+                domainName: `${props.domainStage}.api.${DOMAIN_NAME}`, // Replace with your custom subdomain
+                certificate
+            }
+        );
+
+        const api = new apigateway.RestApi(
+            this,
+            `${APP_NAME_TAIGER_SERVICE}-APIG-${props.domainStage}`,
+            {
+                defaultCorsPreflightOptions: {
+                    allowOrigins: ["*"], // Restrict as necessary
+                    allowHeaders: ["Content-Type", "Authorization", "tenantId"]
+                },
+                restApiName: `${APP_NAME}-api-${props.domainStage}`,
+                description: `API for TaiGer Portal - ${props.domainStage}`,
+                deployOptions: {
+                    stageName: props.domainStage
+                }
+            }
+        );
 
         const proxyResource = api.root.addResource("{proxy+}");
 
@@ -323,17 +339,23 @@ export class EcsFargateStack extends Stack {
             }
         });
 
-        new apigateway.BasePathMapping(this, "BasePathMapping", {
+        new apigateway.BasePathMapping(this, `${APP_NAME_TAIGER_SERVICE}-BasePathMapping`, {
             domainName: domainName,
             restApi: api,
             stage: api.deploymentStage
         });
 
         // Step 6: Create Route 53 Record to point to the API Gateway
-        new route53.ARecord(this, `ApiGatewayRecord-${props.domainStage}`, {
-            zone: hostedZone,
-            recordName: `${props.domainStage}.api.taigerconsultancy-portal.com`, // Subdomain name for your custom domain
-            target: route53.RecordTarget.fromAlias(new route53Targets.ApiGatewayDomain(domainName))
-        });
+        new route53.ARecord(
+            this,
+            `${APP_NAME_TAIGER_SERVICE}-ApiGatewayRecord-${props.domainStage}`,
+            {
+                zone: hostedZone,
+                recordName: `${props.domainStage}.api.${DOMAIN_NAME}`, // Subdomain name for your custom domain
+                target: route53.RecordTarget.fromAlias(
+                    new route53Targets.ApiGatewayDomain(domainName)
+                )
+            }
+        );
     }
 }

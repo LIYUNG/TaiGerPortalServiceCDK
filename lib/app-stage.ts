@@ -1,7 +1,6 @@
 import { EcsFargateStack } from "../stacks/EcsFargateStack";
 import { Stage, StageProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
-// import { ApiGatewayCustomDomainStack } from '../stacks/ApiGatewayCustomDomainStack';
 // import { AuthStack } from "./authstack";
 
 interface DeploymentProps extends StageProps {
@@ -22,16 +21,5 @@ export class PipelineAppStage extends Stage {
             isProd: props.isProd,
             secretArn: props.secretArn
         });
-
-        // new ApiGatewayCustomDomainStack(
-        //   this,
-        //   `ApiGatewayCustomDomainStack-${props.stageName}`,
-        //   {
-        //     env: props.env,
-        //     stageName: props.stageName,
-        //     domainStage: props.domainStage,
-        //     isProd: props.isProd,
-        //   }
-        // );
     }
 }
