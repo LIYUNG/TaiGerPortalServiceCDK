@@ -19,13 +19,16 @@ import * as logs from "aws-cdk-lib/aws-logs"; // For CloudWatch Log resources
 import { Construct } from "constructs";
 
 import { APP_NAME, APP_NAME_TAIGER_SERVICE, AWS_ACCOUNT, DOMAIN_NAME } from "../configuration";
-import { EcsDeploymentGroup } from "aws-cdk-lib/aws-codedeploy";
+import { CfnIdentityPool, IUserPool, UserPool, UserPoolClient } from "aws-cdk-lib/aws-cognito";
 
 interface EcsFargateStackProps extends StackProps {
     stageName: string;
     domainStage: string;
     isProd: boolean;
     secretArn: string;
+    userPool: IUserPool;
+    userPoolClient: UserPoolClient;
+    identityPool: CfnIdentityPool;
 }
 
 export class EcsFargateStack extends Stack {
@@ -338,8 +341,19 @@ export class EcsFargateStack extends Stack {
             }
         );
 
+        // Add Cognito Authorizoer
+        const userPoolAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(
+            this,
+            "CognitoAuthorizer",
+            {
+                cognitoUserPools: [props.userPool]
+            }
+        );
+
         // Add methods with path parameter mapping
         proxyResource.addMethod("ANY", albIntegration, {
+            authorizer: userPoolAuthorizer,
+            authorizationType: apigateway.AuthorizationType.COGNITO,
             requestParameters: {
                 "method.request.path.proxy": true // Enable path parameter
             }
