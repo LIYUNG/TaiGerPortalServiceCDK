@@ -3,6 +3,8 @@ import * as cognito from "aws-cdk-lib/aws-cognito";
 import { FederatedPrincipal, Role } from "aws-cdk-lib/aws-iam";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
+import path = require("path");
+import * as fs from "fs";
 
 interface CognitoStackProps extends cdk.StackProps {
     stageName: string;
@@ -34,6 +36,17 @@ export class CognitoStack extends cdk.Stack {
                 generateSecret: false // Don't need to generate secret for webapp running on browers
             }
         );
+
+        // Step 3: Read CSS file
+        const cssFilePath = path.join(__dirname, "cognito-custom.css");
+        const customCss = fs.readFileSync(cssFilePath, "utf8");
+
+        // Step 4: Apply UI Customization
+        new cognito.CfnUserPoolUICustomizationAttachment(this, "UICustomization", {
+            userPoolId: this.taigerUserPool.userPoolId,
+            clientId: this.taigerUserPoolClient.userPoolClientId, // Apply to a specific client
+            css: customCss // Custom CSS content
+        });
 
         this.identityPool = new cognito.CfnIdentityPool(this, `IdentityPool-${props.stageName}`, {
             allowUnauthenticatedIdentities: true,
