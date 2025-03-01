@@ -19,7 +19,7 @@ import { Region, STAGES } from "../constants";
 import { LinuxBuildImage } from "aws-cdk-lib/aws-codebuild";
 import { CfnReplicationConfiguration, Repository } from "aws-cdk-lib/aws-ecr";
 
-export class TaiGerPortalServiceStack extends Stack {
+export class TaiGerPortalServicePipelineStack extends Stack {
     constructor(scope: Construct, id: string, props?: StackProps) {
         super(scope, id, props);
 
@@ -83,9 +83,8 @@ export class TaiGerPortalServiceStack extends Stack {
         // run docker comment.
         const prebuild = new CodeBuildStep("Prebuild", {
             input: sourceCode,
-            primaryOutputDirectory: "./api",
+            primaryOutputDirectory: ".",
             commands: [
-                "cd api", // Navigate to the API directory
                 `aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO_URI`, // Log in to ECR
                 `docker build --platform linux/arm64 -t ${ecrRepo.repositoryUri} .`, // Build the Docker image
                 `docker push ${ecrRepo.repositoryUri}` // Push the Docker image to ECR
