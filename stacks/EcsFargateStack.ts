@@ -26,9 +26,9 @@ interface EcsFargateStackProps extends StackProps {
     domainStage: string;
     isProd: boolean;
     secretArn: string;
-    userPool: IUserPool;
-    userPoolClient: UserPoolClient;
-    identityPool: CfnIdentityPool;
+    // userPool: IUserPool;
+    // userPoolClient: UserPoolClient;
+    // identityPool: CfnIdentityPool;
 }
 
 export class EcsFargateStack extends Stack {
@@ -341,19 +341,19 @@ export class EcsFargateStack extends Stack {
             }
         );
 
-        // Add Cognito Authorizoer
-        const userPoolAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(
-            this,
-            "CognitoAuthorizer",
-            {
-                cognitoUserPools: [props.userPool]
-            }
-        );
+        // // Add Cognito Authorizoer
+        // const userPoolAuthorizer = new apigateway.CognitoUserPoolsAuthorizer(
+        //     this,
+        //     "CognitoAuthorizer",
+        //     {
+        //         cognitoUserPools: [props.userPool]
+        //     }
+        // );
 
         // Add methods with path parameter mapping
         proxyResource.addMethod("ANY", albIntegration, {
-            authorizer: userPoolAuthorizer,
-            authorizationType: apigateway.AuthorizationType.COGNITO,
+            // authorizer: userPoolAuthorizer,
+            // authorizationType: apigateway.AuthorizationType.COGNITO,
             requestParameters: {
                 "method.request.path.proxy": true // Enable path parameter
             }
