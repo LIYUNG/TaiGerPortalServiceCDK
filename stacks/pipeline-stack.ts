@@ -14,7 +14,7 @@ import {
     GITHUB_TAIGER_PORTAL_REPO,
     GITHUB_TOKEN
 } from "../configuration/dependencies";
-import { PipelineAppStage } from "./app-stage";
+import { PipelineAppStage } from "../lib/app-stage";
 import { Region, STAGES } from "../constants";
 import { LinuxBuildImage } from "aws-cdk-lib/aws-codebuild";
 import { CfnReplicationConfiguration, Repository } from "aws-cdk-lib/aws-ecr";
@@ -131,16 +131,28 @@ export class TaiGerPortalServicePipelineStack extends Stack {
             dockerEnabledForSelfMutation: true
         });
 
-        STAGES.forEach(({ stageName, env, domainStage, isProd, secretArn }) => {
-            const stage = new PipelineAppStage(this, `${stageName}-Stage`, {
-                env,
+        STAGES.forEach(
+            ({
                 stageName,
+                env,
                 domainStage,
                 isProd,
-                secretArn
-            });
-            pipeline.addStage(stage);
-        });
+                secretArn,
+                ecsEc2Capacity,
+                ecsTaskCapacity
+            }) => {
+                const stage = new PipelineAppStage(this, `${stageName}-Stage`, {
+                    env,
+                    stageName,
+                    domainStage,
+                    isProd,
+                    secretArn,
+                    ecsEc2Capacity,
+                    ecsTaskCapacity
+                });
+                pipeline.addStage(stage);
+            }
+        );
 
         pipeline.buildPipeline();
         // Grant CodeBuild permission to interact with ECR

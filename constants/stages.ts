@@ -11,23 +11,43 @@ export enum DomainStage {
     Prod = "prod"
 }
 
-export const STAGES = [
+interface StageConfig {
+    stageName: Stage;
+    env: { region: Region; account: string };
+    isProd: boolean;
+    domainStage: DomainStage;
+    secretArn: string;
+    ecsEc2Capacity: {
+        min: number;
+        max: number;
+    };
+    ecsTaskCapacity: {
+        min: number;
+        max: number;
+    };
+}
+
+export const STAGES: StageConfig[] = [
     {
         stageName: Stage.Beta_FE,
         env: { region: Region.IAD, account: AWS_ACCOUNT },
         isProd: false,
         domainStage: DomainStage.Beta,
-        secretArn: `arn:aws:secretsmanager:${Region.IAD}:${AWS_ACCOUNT}:secret:beta/taiger/portal/service/env-486S9W`
+        secretArn: `arn:aws:secretsmanager:${Region.IAD}:${AWS_ACCOUNT}:secret:beta/taiger/portal/service/env-486S9W`,
+        ecsEc2Capacity: {
+            min: 1,
+            max: 2
+        },
+        ecsTaskCapacity: {
+            min: 1,
+            max: 2
+        }
     }
     // {
     //     stageName: Stage.Prod_NA,
     //     env: { region: Region.NRT, account: AWS_ACCOUNT },
     //     isProd: true,
     //     domainStage: DomainStage.Prod,
-    //     stageName: "prod/taigerportal/mongodb",
-    //     mongoDBName: "TaiGer_Prod",
-    //     externalS3BucketName: `taiger-external-bucket-${DomainStage.Prod}`,
-    //     internalMongodbS3BucketName: "taiger-file-storage-production-mongo-backup",
-    //     origin: "https://taigerconsultancy-portal.com"
+    //     secretArn: `arn:aws:secretsmanager:${Region.NRT}:${AWS_ACCOUNT}:secret:prod/taiger/portal/service/env-486S9W`
     // }
 ];

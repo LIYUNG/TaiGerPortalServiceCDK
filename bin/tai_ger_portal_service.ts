@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import * as cdk from "aws-cdk-lib";
-import { TaiGerPortalServicePipelineStack } from "../lib/tai_ger_portal_service_pipelinestack";
+import { TaiGerPortalServicePipelineStack } from "../stacks/pipeline-stack";
 import { AWS_ACCOUNT } from "../configuration";
 import { Region } from "../constants";
 
