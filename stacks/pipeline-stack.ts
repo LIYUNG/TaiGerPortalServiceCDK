@@ -92,7 +92,8 @@ export class TaiGerPortalServicePipelineStack extends Stack {
             commands: [
                 `aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO_URI`, // Log in to ECR
                 `docker build --platform linux/arm64 -t ${ecrRepo.repositoryUri} .`, // Build the Docker image
-                `docker push ${ecrRepo.repositoryUri}` // Push the Docker image to ECR
+                `docker push ${ecrRepo.repositoryUri}`, // Push the Docker image to ECR
+                `aws ecr describe-images --repository-name ${ecrRepo.repositoryName} --image-ids imageTag=latest --query 'imageDetails[0].imageDigest' --output text > digest.txt`
             ],
             buildEnvironment: {
                 buildImage: LinuxBuildImage.AMAZON_LINUX_2_ARM_3, // make sure it matches the requested image platform.
@@ -113,7 +114,11 @@ export class TaiGerPortalServicePipelineStack extends Stack {
             additionalInputs: {
                 "../dist": prebuild
             },
-            commands: ["npm ci", "npm run build", "npx cdk synth"]
+            commands: [
+                "npm ci",
+                "npm run build",
+                "npx cdk synth -c imageDigest=$(cat ../dist/digest.txt)"
+            ]
         });
 
         // Create the high-level CodePipeline
