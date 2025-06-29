@@ -1,5 +1,10 @@
 import { CfnOutput, SecretValue, Stack, StackProps } from "aws-cdk-lib";
-import { CodePipeline, CodePipelineSource, CodeBuildStep } from "aws-cdk-lib/pipelines";
+import {
+    CodePipeline,
+    CodePipelineSource,
+    CodeBuildStep,
+    ManualApprovalStep
+} from "aws-cdk-lib/pipelines";
 import * as codepipeline_actions from "aws-cdk-lib/aws-codepipeline-actions";
 import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
@@ -140,7 +145,18 @@ export class TaiGerPortalServicePipelineStack extends Stack {
                 ecsEc2Capacity,
                 ecsTaskCapacity
             });
-            pipeline.addStage(stage);
+            if (isProd) {
+                pipeline.addStage(stage, {
+                    pre: [
+                        new ManualApprovalStep("ApproveIfStable", {
+                            comment:
+                                "Approve to continue production deployment. Make sure every changes are verified in dev."
+                        })
+                    ]
+                });
+            } else {
+                pipeline.addStage(stage);
+            }
         });
 
         pipeline.buildPipeline();
