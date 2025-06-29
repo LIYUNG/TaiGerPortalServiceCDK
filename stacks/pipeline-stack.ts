@@ -134,6 +134,12 @@ export class TaiGerPortalServicePipelineStack extends Stack {
                             "route53:ListHostedZones"
                         ],
                         resources: ["*"]
+                    }), // Add ECR permissions for CodeBuild
+                    new PolicyStatement({
+                        actions: [
+                            "ecr:*" // Required for EcrSourceAction and synth
+                        ],
+                        resources: [ecrRepo.repositoryArn]
                     })
                 ]
             },
