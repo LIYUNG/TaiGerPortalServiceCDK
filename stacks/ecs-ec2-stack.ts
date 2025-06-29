@@ -30,7 +30,6 @@ import { SpotRequestType } from "aws-cdk-lib/aws-ec2";
 
 interface EcsEc2StackProps extends StackProps {
     stageName: string;
-    domainStage: string;
     secretArn: string;
     ecsEc2Capacity: {
         min: number;
@@ -63,7 +62,6 @@ export class EcsEc2Stack extends Stack {
                 region: props.env?.region,
                 stageName: props.stageName,
                 resoureName: `${APPLICATION_NAME}-ecs-ec2`,
-                domainStage: props.domainStage,
                 secretArn: props.secretArn
             }
         );
@@ -79,14 +77,10 @@ export class EcsEc2Stack extends Stack {
         );
 
         const anyIp4 = cdk.aws_ec2.Peer.anyIpv4();
-        const albSecurityGroup = new cdk.aws_ec2.SecurityGroup(
-            this,
-            `${APPLICATION_NAME}-ECS-EC2-ALB-SG`,
-            {
-                vpc,
-                description: `${APPLICATION_NAME} ALB Security Group`
-            }
-        );
+        const albSecurityGroup = new cdk.aws_ec2.SecurityGroup(this, `${APPLICATION_NAME}-ALB-SG`, {
+            vpc,
+            description: `${APPLICATION_NAME} ALB Security Group`
+        });
 
         albSecurityGroup.addIngressRule(
             anyIp4,
@@ -94,15 +88,11 @@ export class EcsEc2Stack extends Stack {
             "Allow HTTPS from public"
         );
 
-        const ecsEc2SecurityGroup = new cdk.aws_ec2.SecurityGroup(
-            this,
-            `${APPLICATION_NAME}-ECS-EC2-SG`,
-            {
-                vpc,
-                description: `${APPLICATION_NAME} ECS EC2 Security Group`,
-                allowAllOutbound: true
-            }
-        );
+        const ecsEc2SecurityGroup = new cdk.aws_ec2.SecurityGroup(this, `${APPLICATION_NAME}-SG`, {
+            vpc,
+            description: `${APPLICATION_NAME} ECS EC2 Security Group`,
+            allowAllOutbound: true
+        });
 
         ecsEc2SecurityGroup.addIngressRule(
             albSecurityGroup,
@@ -117,7 +107,7 @@ export class EcsEc2Stack extends Stack {
 
         const ecsInstanceRole = new Role(
             this,
-            `${APPLICATION_NAME}-ECS-EC2-InstanceRole-${props.stageName}`,
+            `${APPLICATION_NAME}-InstanceRole-${props.stageName}`,
             {
                 roleName: `${APPLICATION_NAME}-ECS-EC2-InstanceRole-${props.stageName}`,
                 assumedBy: new ServicePrincipal("ec2.amazonaws.com"),
@@ -132,7 +122,7 @@ export class EcsEc2Stack extends Stack {
 
         const executionRole = new Role(
             this,
-            `${APPLICATION_NAME}-EcsEc2ExecutionRole-${props.stageName}`,
+            `${APPLICATION_NAME}-ExecutionRole-${props.stageName}`,
             {
                 assumedBy: new ServicePrincipal("ecs-tasks.amazonaws.com"),
                 description: "IAM Role for Ecs to access S3 and SQS securely"
@@ -145,7 +135,7 @@ export class EcsEc2Stack extends Stack {
 
         const keyPair = new cdk.aws_ec2.KeyPair(
             this,
-            `${APPLICATION_NAME}-EcsEc2KeyPair-${props.stageName}`,
+            `${APPLICATION_NAME}-KeyPair-${props.stageName}`,
             {
                 keyPairName: `${APPLICATION_NAME}-EcsEc2KeyPair-${props.stageName}`
             }
@@ -153,7 +143,7 @@ export class EcsEc2Stack extends Stack {
 
         const launchTemplate = new cdk.aws_ec2.LaunchTemplate(
             this,
-            `${APPLICATION_NAME}-EcsEc2LaunchTemplate-${props.stageName}`,
+            `${APPLICATION_NAME}-LaunchTemplate-${props.stageName}`,
             {
                 instanceType: cdk.aws_ec2.InstanceType.of(
                     cdk.aws_ec2.InstanceClass.T4G,
@@ -184,7 +174,7 @@ export class EcsEc2Stack extends Stack {
 
         const asg = new cdk.aws_autoscaling.AutoScalingGroup(
             this,
-            `${APPLICATION_NAME}-EcsEc2AutoScalingGroup-${props.stageName}`,
+            `${APPLICATION_NAME}-AutoScalingGroup-${props.stageName}`,
             {
                 vpc,
                 vpcSubnets: {
@@ -198,7 +188,7 @@ export class EcsEc2Stack extends Stack {
 
         const cluster = new cdk.aws_ecs.Cluster(
             this,
-            `${APPLICATION_NAME}-ecs-ec2-Cluster-${props.stageName}`,
+            `${APPLICATION_NAME}-Cluster-${props.stageName}`,
             {
                 clusterName: `${APPLICATION_NAME}-ec2-cluster-${props.stageName}`,
                 vpc
@@ -207,7 +197,7 @@ export class EcsEc2Stack extends Stack {
 
         const capacityProvider = new cdk.aws_ecs.AsgCapacityProvider(
             this,
-            `${APPLICATION_NAME}-EcsEc2CapacityProvider-${props.stageName}`,
+            `${APPLICATION_NAME}-CapacityProvider-${props.stageName}`,
             {
                 autoScalingGroup: asg
             }
@@ -215,15 +205,11 @@ export class EcsEc2Stack extends Stack {
 
         cluster.addAsgCapacityProvider(capacityProvider);
 
-        const logGroup = new LogGroup(
-            this,
-            `${APPLICATION_NAME}-EcsEc2LogGroup-${props.stageName}`,
-            {
-                logGroupName: `/ecs-ec2/${props.stageName}`,
-                retention: cdk.aws_logs.RetentionDays.ONE_WEEK,
-                removalPolicy: cdk.RemovalPolicy.DESTROY
-            }
-        );
+        const logGroup = new LogGroup(this, `${APPLICATION_NAME}-LogGroup-${props.stageName}`, {
+            logGroupName: `/ecs-ec2/${props.stageName}`,
+            retention: cdk.aws_logs.RetentionDays.ONE_WEEK,
+            removalPolicy: cdk.RemovalPolicy.DESTROY
+        });
 
         const ecrRepoEcs = Repository.fromRepositoryName(
             this,
@@ -319,30 +305,26 @@ export class EcsEc2Stack extends Stack {
             }
         });
 
-        const service = new Ec2Service(
-            this,
-            `${APPLICATION_NAME}-EcsEc2Service-${props.stageName}`,
-            {
-                cluster,
-                taskDefinition,
-                capacityProviderStrategies: [
-                    {
-                        capacityProvider: capacityProvider.capacityProviderName,
-                        weight: 1
-                    }
-                ],
-                circuitBreaker: {
-                    rollback: true
-                },
-                minHealthyPercent: 50,
-                maxHealthyPercent: 200,
-                serviceName: `${APPLICATION_NAME}-ecs-ec2-${props.stageName}`,
-                placementStrategies: [PlacementStrategy.spreadAcrossInstances()],
-                deploymentController: {
-                    type: DeploymentControllerType.ECS
+        const service = new Ec2Service(this, `${APPLICATION_NAME}-Service-${props.stageName}`, {
+            cluster,
+            taskDefinition,
+            capacityProviderStrategies: [
+                {
+                    capacityProvider: capacityProvider.capacityProviderName,
+                    weight: 1
                 }
+            ],
+            circuitBreaker: {
+                rollback: true
+            },
+            minHealthyPercent: 50,
+            maxHealthyPercent: 200,
+            serviceName: `${APPLICATION_NAME}-ecs-ec2-${props.stageName}`,
+            placementStrategies: [PlacementStrategy.spreadAcrossInstances()],
+            deploymentController: {
+                type: DeploymentControllerType.ECS
             }
-        );
+        });
 
         const scaling = service.autoScaleTaskCount({
             minCapacity: props.ecsTaskCapacity.min,
@@ -361,7 +343,7 @@ export class EcsEc2Stack extends Stack {
 
         const hostedZone = HostedZone.fromLookup(
             this,
-            `${APPLICATION_NAME}-EcsEc2HostedZone-${props.stageName}`,
+            `${APPLICATION_NAME}-HostedZone-${props.stageName}`,
             {
                 domainName: DOMAIN_NAME // Replace with your domain name
             }
@@ -371,7 +353,7 @@ export class EcsEc2Stack extends Stack {
 
         const albCertificate = new Certificate(
             this,
-            `${APPLICATION_NAME}-EcsEc2ALBCertificate-${props.stageName}`,
+            `${APPLICATION_NAME}-ALBCertificate-${props.stageName}`,
             {
                 domainName: albDomain,
                 validation: CertificateValidation.fromDns(hostedZone)
@@ -379,13 +361,13 @@ export class EcsEc2Stack extends Stack {
         );
 
         // Create ALB
-        const lb = new cdk.aws_elasticloadbalancingv2.ApplicationLoadBalancer(
+        const alb = new cdk.aws_elasticloadbalancingv2.ApplicationLoadBalancer(
             this,
-            `${APPLICATION_NAME}-EcsEc2ALB-${props.stageName}`,
+            `${APPLICATION_NAME}-alb-${props.stageName}`,
             {
                 vpc,
                 internetFacing: true,
-                loadBalancerName: `${APPLICATION_NAME}-EcsEc2ALB-${props.stageName}`,
+                loadBalancerName: `${APPLICATION_NAME}-alb-${props.stageName}`,
                 securityGroup: albSecurityGroup
             }
         );
@@ -394,10 +376,10 @@ export class EcsEc2Stack extends Stack {
         new ARecord(this, `${APPLICATION_NAME}-EcsEc2ALBRecord-${props.stageName}`, {
             zone: hostedZone,
             recordName: albDomain, // Subdomain name for your custom domain
-            target: RecordTarget.fromAlias(new LoadBalancerTarget(lb))
+            target: RecordTarget.fromAlias(new LoadBalancerTarget(alb))
         });
 
-        const listener = lb.addListener("PublicListener", {
+        const listener = alb.addListener("PublicListener", {
             protocol: ApplicationProtocol.HTTPS,
             open: true,
             certificates: [albCertificate]

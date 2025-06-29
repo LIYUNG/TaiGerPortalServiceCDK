@@ -7,7 +7,6 @@ export interface EcsEc2RoleProps {
     stageName: string;
     s3BucketArns?: string[]; // List of S3 bucket ARNs
     resoureName: string;
-    domainStage: string;
     secretArn: string;
     // sqsQueueArns?: string[]; // List of SQS queue ARNs
 }
@@ -42,7 +41,7 @@ export class EcsEc2Role extends Construct {
                     "logs:GetLogEvents"
                 ],
                 resources: [
-                    `arn:aws:logs:${props?.region}:${AWS_ACCOUNT}:log-group:${APP_NAME}-${props?.domainStage}*`
+                    `arn:aws:logs:${props?.region}:${AWS_ACCOUNT}:log-group:${APP_NAME}-${props?.stageName}*`
                 ]
             })
         );

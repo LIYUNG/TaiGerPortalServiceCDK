@@ -131,28 +131,17 @@ export class TaiGerPortalServicePipelineStack extends Stack {
             dockerEnabledForSelfMutation: true
         });
 
-        STAGES.forEach(
-            ({
-                stageName,
+        STAGES.forEach(({ stageName, env, isProd, secretArn, ecsEc2Capacity, ecsTaskCapacity }) => {
+            const stage = new PipelineAppStage(this, `${stageName}-Stage`, {
                 env,
-                domainStage,
+                stageName,
                 isProd,
                 secretArn,
                 ecsEc2Capacity,
                 ecsTaskCapacity
-            }) => {
-                const stage = new PipelineAppStage(this, `${stageName}-Stage`, {
-                    env,
-                    stageName,
-                    domainStage,
-                    isProd,
-                    secretArn,
-                    ecsEc2Capacity,
-                    ecsTaskCapacity
-                });
-                pipeline.addStage(stage);
-            }
-        );
+            });
+            pipeline.addStage(stage);
+        });
 
         pipeline.buildPipeline();
         // Grant CodeBuild permission to interact with ECR

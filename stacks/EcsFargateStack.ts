@@ -23,7 +23,6 @@ import { CfnIdentityPool, IUserPool, UserPool, UserPoolClient } from "aws-cdk-li
 
 interface EcsFargateStackProps extends StackProps {
     stageName: string;
-    domainStage: string;
     isProd: boolean;
     secretArn: string;
     // userPool: IUserPool;
@@ -38,7 +37,7 @@ export class EcsFargateStack extends Stack {
         // Step 1: VPC for ECS
         const vpc = new ec2.Vpc(this, `${APP_NAME_TAIGER_SERVICE}-Vpc`, {
             maxAzs: 2,
-            vpcName: `${APP_NAME}-vpc-${props.domainStage}`,
+            vpcName: `${APP_NAME}-vpc-${props.stageName}`,
             natGateways: 0, // Number of NAT Gateways
             subnetConfiguration: [
                 {
@@ -70,7 +69,7 @@ export class EcsFargateStack extends Stack {
 
         // Step 2: ECS Cluster
         const cluster = new ecs.Cluster(this, `${APP_NAME}-EcsCluster`, {
-            clusterName: `${APP_NAME}-cluster-${props.domainStage}`,
+            clusterName: `${APP_NAME}-cluster-${props.stageName}`,
             vpc
         });
 
@@ -81,13 +80,13 @@ export class EcsFargateStack extends Stack {
         );
 
         new logs.LogGroup(this, `${APP_NAME_TAIGER_SERVICE}-LogGroup`, {
-            logGroupName: `${APP_NAME}-${props.domainStage}`,
+            logGroupName: `${APP_NAME}-${props.stageName}`,
             retention: logs.RetentionDays.SIX_MONTHS,
             removalPolicy: RemovalPolicy.DESTROY // Adjust based on your preference
         });
 
         const taskRole = new iam.Role(this, "TaskRole", {
-            roleName: `${APP_NAME}-role-${props.domainStage}`,
+            roleName: `${APP_NAME}-role-${props.stageName}`,
             assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com")
         });
 
@@ -96,7 +95,7 @@ export class EcsFargateStack extends Stack {
             new iam.PolicyStatement({
                 actions: ["logs:DescribeLogStreams", "logs:CreateLogStream", "logs:PutLogEvents"],
                 resources: [
-                    `arn:aws:logs:${props.env?.region}:${AWS_ACCOUNT}:log-group:${APP_NAME}-${props.domainStage}*`
+                    `arn:aws:logs:${props.env?.region}:${AWS_ACCOUNT}:log-group:${APP_NAME}-${props.stageName}*`
                 ]
             })
         );
@@ -158,7 +157,7 @@ export class EcsFargateStack extends Stack {
             this,
             `${APP_NAME_TAIGER_SERVICE}-FargateService`,
             {
-                serviceName: `${APP_NAME}-fargate-${props.domainStage}`,
+                serviceName: `${APP_NAME}-fargate-${props.stageName}`,
                 cluster,
                 taskImageOptions: {
                     image: ecs.ContainerImage.fromEcrRepository(ecrRepo, "latest"), // Replace with your Node.js app image
@@ -291,7 +290,7 @@ export class EcsFargateStack extends Stack {
             this,
             `${APP_NAME_TAIGER_SERVICE}-ApiCertificate`,
             {
-                domainName: `${props.domainStage}.api.${DOMAIN_NAME}`, // Replace with your subdomain
+                domainName: `${props.stageName}.api.${DOMAIN_NAME}`, // Replace with your subdomain
                 validation: certmgr.CertificateValidation.fromDns(hostedZone)
             }
         );
@@ -300,23 +299,23 @@ export class EcsFargateStack extends Stack {
             this,
             `${APP_NAME_TAIGER_SERVICE}-CustomDomain`,
             {
-                domainName: `${props.domainStage}.api.${DOMAIN_NAME}`, // Replace with your custom subdomain
+                domainName: `${props.stageName}.api.${DOMAIN_NAME}`, // Replace with your custom subdomain
                 certificate
             }
         );
 
         const api = new apigateway.RestApi(
             this,
-            `${APP_NAME_TAIGER_SERVICE}-APIG-${props.domainStage}`,
+            `${APP_NAME_TAIGER_SERVICE}-APIG-${props.stageName}`,
             {
                 defaultCorsPreflightOptions: {
                     allowOrigins: ["*"], // Restrict as necessary
                     allowHeaders: ["Content-Type", "Authorization", "tenantId"]
                 },
-                restApiName: `${APP_NAME}-api-${props.domainStage}`,
-                description: `API for TaiGer Portal - ${props.domainStage}`,
+                restApiName: `${APP_NAME}-api-${props.stageName}`,
+                description: `API for TaiGer Portal - ${props.stageName}`,
                 deployOptions: {
-                    stageName: props.domainStage
+                    stageName: props.stageName
                 },
                 binaryMediaTypes: ["*/*"] // Enable binary support for all media types
             }
@@ -368,10 +367,10 @@ export class EcsFargateStack extends Stack {
         // Step 6: Create Route 53 Record to point to the API Gateway
         new route53.ARecord(
             this,
-            `${APP_NAME_TAIGER_SERVICE}-ApiGatewayRecord-${props.domainStage}`,
+            `${APP_NAME_TAIGER_SERVICE}-ApiGatewayRecord-${props.stageName}`,
             {
                 zone: hostedZone,
-                recordName: `${props.domainStage}.api.${DOMAIN_NAME}`, // Subdomain name for your custom domain
+                recordName: `${props.stageName}.api.${DOMAIN_NAME}`, // Subdomain name for your custom domain
                 target: route53.RecordTarget.fromAlias(
                     new route53Targets.ApiGatewayDomain(domainName)
                 )

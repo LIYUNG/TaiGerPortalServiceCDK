@@ -2,8 +2,8 @@ import { AWS_ACCOUNT } from "../configuration";
 import { Region } from "./regions";
 
 export enum Stage {
-    Beta_FE = "Beta-FE",
-    Prod_NA = "Prod-NA"
+    Beta = "beta",
+    Prod = "prod"
 }
 
 export enum DomainStage {
@@ -15,7 +15,6 @@ interface StageConfig {
     stageName: Stage;
     env: { region: Region; account: string };
     isProd: boolean;
-    domainStage: DomainStage;
     secretArn: string;
     ecsEc2Capacity: {
         min: number;
@@ -29,10 +28,9 @@ interface StageConfig {
 
 export const STAGES: StageConfig[] = [
     {
-        stageName: Stage.Beta_FE,
+        stageName: Stage.Beta,
         env: { region: Region.IAD, account: AWS_ACCOUNT },
         isProd: false,
-        domainStage: DomainStage.Beta,
         secretArn: `arn:aws:secretsmanager:${Region.IAD}:${AWS_ACCOUNT}:secret:beta/taiger/portal/service/env-486S9W`,
         ecsEc2Capacity: {
             min: 1,
@@ -47,7 +45,7 @@ export const STAGES: StageConfig[] = [
     //     stageName: Stage.Prod_NA,
     //     env: { region: Region.NRT, account: AWS_ACCOUNT },
     //     isProd: true,
-    //     domainStage: DomainStage.Prod,
+    //     stageName: DomainStage.Prod,
     //     secretArn: `arn:aws:secretsmanager:${Region.NRT}:${AWS_ACCOUNT}:secret:prod/taiger/portal/service/env-486S9W`
     // }
 ];

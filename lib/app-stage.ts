@@ -7,7 +7,6 @@ import { EcsEc2Stack } from "../stacks/ecs-ec2-stack";
 
 interface DeploymentProps extends StageProps {
     stageName: string;
-    domainStage: string;
     isProd: boolean;
     secretArn: string;
     ecsEc2Capacity: {
@@ -36,7 +35,7 @@ export class PipelineAppStage extends Stage {
         // new EcsFargateStack(this, `EcsFargateStack-${props.stageName}`, {
         //     env: props.env,
         //     stageName: props.stageName,
-        //     domainStage: props.domainStage,
+        //     stageName: props.stageName,
         //     isProd: props.isProd,
         //     secretArn: props.secretArn
         //     // userPool: cognito.taigerUserPool,
