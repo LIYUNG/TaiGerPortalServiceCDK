@@ -79,18 +79,6 @@ export class EcsEc2Role extends Construct {
             })
         );
 
-        this.role.addToPolicy(
-            new iam.PolicyStatement({
-                actions: ["s3:GetObject", "s3:PutObject", "s3:ListBucket", "s3:DeleteObject"],
-                resources: [
-                    `arn:aws:s3:::taiger-file-storage`,
-                    `arn:aws:s3:::taiger-file-storage/*`,
-                    `arn:aws:s3:::taiger-file-storage-public`,
-                    `arn:aws:s3:::taiger-file-storage-public/*`
-                ]
-            })
-        );
-
         // Grant S3 permissions (if bucket ARNs are provided)
         if (props?.s3BucketArns) {
             this.role.addToPolicy(

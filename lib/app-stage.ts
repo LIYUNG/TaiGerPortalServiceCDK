@@ -9,6 +9,7 @@ interface DeploymentProps extends StageProps {
     stageName: string;
     isProd: boolean;
     secretArn: string;
+    s3BucketArns: string[];
     ecsEc2Capacity: {
         min: number;
         max: number;

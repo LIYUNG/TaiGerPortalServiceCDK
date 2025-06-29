@@ -31,6 +31,7 @@ import { SpotRequestType } from "aws-cdk-lib/aws-ec2";
 interface EcsEc2StackProps extends StackProps {
     stageName: string;
     secretArn: string;
+    s3BucketArns: string[];
     ecsEc2Capacity: {
         min: number;
         max: number;
@@ -62,7 +63,8 @@ export class EcsEc2Stack extends Stack {
                 region: props.env?.region,
                 stageName: props.stageName,
                 resoureName: `${APPLICATION_NAME}-ecs-ec2`,
-                secretArn: props.secretArn
+                secretArn: props.secretArn,
+                s3BucketArns: props.s3BucketArns
             }
         );
 

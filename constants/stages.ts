@@ -16,6 +16,7 @@ interface StageConfig {
     env: { region: Region; account: string };
     isProd: boolean;
     secretArn: string;
+    s3BucketArns: string[];
     ecsEc2Capacity: {
         min: number;
         max: number;
@@ -32,6 +33,10 @@ export const STAGES: StageConfig[] = [
         env: { region: Region.IAD, account: AWS_ACCOUNT },
         isProd: false,
         secretArn: `arn:aws:secretsmanager:${Region.IAD}:${AWS_ACCOUNT}:secret:beta/taiger/portal/service/env-486S9W`,
+        s3BucketArns: [
+            `arn:aws:s3:::taiger-file-storage`,
+            `arn:aws:s3:::taiger-file-storage-development-public`
+        ],
         ecsEc2Capacity: {
             min: 1,
             max: 2

@@ -141,28 +141,39 @@ export class TaiGerPortalServicePipelineStack extends Stack {
             dockerEnabledForSelfMutation: true
         });
 
-        STAGES.forEach(({ stageName, env, isProd, secretArn, ecsEc2Capacity, ecsTaskCapacity }) => {
-            const stage = new PipelineAppStage(this, `${stageName}-Stage`, {
-                env,
+        STAGES.forEach(
+            ({
                 stageName,
+                env,
                 isProd,
                 secretArn,
+                s3BucketArns,
                 ecsEc2Capacity,
                 ecsTaskCapacity
-            });
-            if (isProd) {
-                pipeline.addStage(stage, {
-                    pre: [
-                        new ManualApprovalStep("ApproveIfStable", {
-                            comment:
-                                "Approve to continue production deployment. Make sure every changes are verified in dev."
-                        })
-                    ]
+            }) => {
+                const stage = new PipelineAppStage(this, `${stageName}-Stage`, {
+                    env,
+                    stageName,
+                    isProd,
+                    secretArn,
+                    s3BucketArns,
+                    ecsEc2Capacity,
+                    ecsTaskCapacity
                 });
-            } else {
-                pipeline.addStage(stage);
+                if (isProd) {
+                    pipeline.addStage(stage, {
+                        pre: [
+                            new ManualApprovalStep("ApproveIfStable", {
+                                comment:
+                                    "Approve to continue production deployment. Make sure every changes are verified in dev."
+                            })
+                        ]
+                    });
+                } else {
+                    pipeline.addStage(stage);
+                }
             }
-        });
+        );
 
         pipeline.buildPipeline();
         // Grant CodeBuild permission to interact with ECR
