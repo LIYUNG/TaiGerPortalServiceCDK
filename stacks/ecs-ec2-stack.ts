@@ -409,11 +409,15 @@ export class EcsEc2Stack extends Stack {
         });
 
         // Step 2: Create API Gateway
-        const logGroupApi = new LogGroup(this, `${APPLICATION_NAME}-LogGroup-${props.stageName}`, {
-            logGroupName: `/ecs-ec2/apigw/${props.stageName}`,
-            retention: cdk.aws_logs.RetentionDays.ONE_WEEK,
-            removalPolicy: cdk.RemovalPolicy.DESTROY
-        });
+        const logGroupApi = new LogGroup(
+            this,
+            `${APPLICATION_NAME}-APIGWLogGroup-${props.stageName}`,
+            {
+                logGroupName: `/ecs-ec2/apigw/${props.stageName}`,
+                retention: cdk.aws_logs.RetentionDays.ONE_WEEK,
+                removalPolicy: cdk.RemovalPolicy.DESTROY
+            }
+        );
         this.api = new RestApi(this, `${APPLICATION_NAME}-EcsEc2APIG-${props.stageName}`, {
             restApiName: `${APPLICATION_NAME}-api-${props.stageName}`,
             defaultCorsPreflightOptions: {
