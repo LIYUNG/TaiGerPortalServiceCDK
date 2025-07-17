@@ -8,6 +8,7 @@ import {
     LogGroupLogDestination,
     RestApi,
     AccessLogFormat
+    // CfnAccount
 } from "aws-cdk-lib/aws-apigateway";
 import { Certificate, CertificateValidation } from "aws-cdk-lib/aws-certificatemanager";
 import { ARecord, HostedZone, RecordTarget } from "aws-cdk-lib/aws-route53";
@@ -422,6 +423,28 @@ export class EcsEc2Stack extends Stack {
                 removalPolicy: cdk.RemovalPolicy.DESTROY
             }
         );
+
+        // Create a role for API Gateway to use for CloudWatch Logs
+        const apiGatewayCloudWatchRole = new Role(
+            this,
+            `${APPLICATION_NAME}-ApiGatewayCloudWatchRole-${props.stageName}`,
+            {
+                assumedBy: new ServicePrincipal("apigateway.amazonaws.com"),
+                managedPolicies: [
+                    ManagedPolicy.fromAwsManagedPolicyName(
+                        "service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+                    )
+                ]
+            }
+        );
+
+        logGroupApi.grantWrite(apiGatewayCloudWatchRole);
+
+        // Set the role at account level for API Gateway
+        // new CfnAccount(this, `${APPLICATION_NAME}-ApiGatewayAccount-${props.stageName}`, {
+        //     cloudWatchRoleArn: apiGatewayCloudWatchRole.roleArn
+        // });
+
         this.api = new RestApi(this, `${APPLICATION_NAME}-EcsEc2APIG-${props.stageName}`, {
             restApiName: `${APPLICATION_NAME}-api-${props.stageName}`,
             defaultCorsPreflightOptions: {
@@ -447,7 +470,8 @@ export class EcsEc2Stack extends Stack {
                 stageName: props.stageName // Your API stage
             },
             binaryMediaTypes: ["*/*"],
-            endpointConfiguration: { types: [EndpointType.REGIONAL] }
+            endpointConfiguration: { types: [EndpointType.REGIONAL] },
+            cloudWatchRole: true
         });
 
         // Define IAM authorization for the API Gateway method
