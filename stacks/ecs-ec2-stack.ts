@@ -5,7 +5,9 @@ import {
     DomainName,
     EndpointType,
     HttpIntegration,
-    RestApi
+    LogGroupLogDestination,
+    RestApi,
+    AccessLogFormat
 } from "aws-cdk-lib/aws-apigateway";
 import { Certificate, CertificateValidation } from "aws-cdk-lib/aws-certificatemanager";
 import { ARecord, HostedZone, RecordTarget } from "aws-cdk-lib/aws-route53";
@@ -407,6 +409,11 @@ export class EcsEc2Stack extends Stack {
         });
 
         // Step 2: Create API Gateway
+        const logGroupApi = new LogGroup(this, `${APPLICATION_NAME}-LogGroup-${props.stageName}`, {
+            logGroupName: `/ecs-ec2/apigw/${props.stageName}`,
+            retention: cdk.aws_logs.RetentionDays.ONE_WEEK,
+            removalPolicy: cdk.RemovalPolicy.DESTROY
+        });
         this.api = new RestApi(this, `${APPLICATION_NAME}-EcsEc2APIG-${props.stageName}`, {
             restApiName: `${APPLICATION_NAME}-api-${props.stageName}`,
             defaultCorsPreflightOptions: {
@@ -417,6 +424,18 @@ export class EcsEc2Stack extends Stack {
             },
             description: "This service handles requests with Ecs from customer portal.",
             deployOptions: {
+                accessLogDestination: new LogGroupLogDestination(logGroupApi),
+                accessLogFormat: AccessLogFormat.jsonWithStandardFields({
+                    caller: true,
+                    httpMethod: true,
+                    ip: true,
+                    protocol: true,
+                    requestTime: true,
+                    resourcePath: true,
+                    responseLength: true,
+                    status: true,
+                    user: true
+                }),
                 stageName: props.stageName // Your API stage
             },
             binaryMediaTypes: ["*/*"],
