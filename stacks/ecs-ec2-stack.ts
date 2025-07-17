@@ -209,11 +209,15 @@ export class EcsEc2Stack extends Stack {
 
         cluster.addAsgCapacityProvider(capacityProvider);
 
-        const logGroup = new LogGroup(this, `${APPLICATION_NAME}-LogGroup-${props.stageName}`, {
-            logGroupName: `/ecs-ec2/${props.stageName}`,
-            retention: cdk.aws_logs.RetentionDays.ONE_WEEK,
-            removalPolicy: cdk.RemovalPolicy.DESTROY
-        });
+        const logGroup = new LogGroup(
+            this,
+            `${APPLICATION_NAME}-EcsEc2LogGroup-${props.stageName}`,
+            {
+                logGroupName: `/ecs/ec2/${APPLICATION_NAME}-${props.stageName}`,
+                retention: cdk.aws_logs.RetentionDays.SIX_MONTHS,
+                removalPolicy: cdk.RemovalPolicy.DESTROY
+            }
+        );
 
         const ecrRepoEcs = Repository.fromRepositoryName(
             this,
@@ -413,8 +417,8 @@ export class EcsEc2Stack extends Stack {
             this,
             `${APPLICATION_NAME}-APIGWLogGroup-${props.stageName}`,
             {
-                logGroupName: `/ecs-ec2/apigw/${props.stageName}`,
-                retention: cdk.aws_logs.RetentionDays.ONE_WEEK,
+                logGroupName: `/ecs/apigw/${APPLICATION_NAME}-${props.stageName}`,
+                retention: cdk.aws_logs.RetentionDays.SIX_MONTHS,
                 removalPolicy: cdk.RemovalPolicy.DESTROY
             }
         );
