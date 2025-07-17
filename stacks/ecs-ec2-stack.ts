@@ -458,7 +458,12 @@ export class EcsEc2Stack extends Stack {
                 accessLogDestination: new LogGroupLogDestination(logGroupApi),
                 accessLogFormat: AccessLogFormat.custom(
                     JSON.stringify({
+                        callerAccountId: AccessLogField.contextCallerAccountId(),
                         requestId: AccessLogField.contextRequestId(),
+                        ownerAccountId: AccessLogField.contextOwnerAccountId(),
+                        apiId: AccessLogField.contextApiId(),
+                        domainName: AccessLogField.contextDomainName(),
+                        stage: AccessLogField.contextStage(),
                         sourceIp: AccessLogField.contextIdentitySourceIp(),
                         path: AccessLogField.contextPath(),
                         protocol: AccessLogField.contextProtocol(),
