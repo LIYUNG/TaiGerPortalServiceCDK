@@ -7,7 +7,8 @@ import {
     HttpIntegration,
     LogGroupLogDestination,
     RestApi,
-    AccessLogFormat
+    AccessLogFormat,
+    AccessLogField
     // CfnAccount
 } from "aws-cdk-lib/aws-apigateway";
 import { Certificate, CertificateValidation } from "aws-cdk-lib/aws-certificatemanager";
@@ -456,17 +457,26 @@ export class EcsEc2Stack extends Stack {
             description: "This service handles requests with Ecs from customer portal.",
             deployOptions: {
                 accessLogDestination: new LogGroupLogDestination(logGroupApi),
-                accessLogFormat: AccessLogFormat.jsonWithStandardFields({
-                    caller: true,
-                    httpMethod: true,
-                    ip: true,
-                    protocol: true,
-                    requestTime: true,
-                    resourcePath: true,
-                    responseLength: true,
-                    status: true,
-                    user: true
-                }),
+                accessLogFormat: AccessLogFormat.custom(
+                    JSON.stringify({
+                        requestId: AccessLogField.contextRequestId(),
+                        sourceIp: AccessLogField.contextIdentitySourceIp(),
+                        path: AccessLogField.contextPath(),
+                        protocol: AccessLogField.contextProtocol(),
+                        authorizeError: AccessLogField.contextAuthorizeError(),
+                        errorMessage: AccessLogField.contextErrorValidationErrorString(),
+                        errorType: AccessLogField.contextErrorResponseType(),
+                        requestTime: AccessLogField.contextRequestTime(),
+                        responseLength: AccessLogField.contextResponseLength(),
+                        responseMessage: AccessLogField.contextErrorMessageString(),
+                        httpMethod: AccessLogField.contextHttpMethod(),
+                        user: AccessLogField.contextIdentityUserArn(),
+                        accountId: AccessLogField.contextIdentityAccountId(),
+                        extendedRequestId: AccessLogField.contextExtendedRequestId(),
+                        resourcePath: AccessLogField.contextResourcePath(),
+                        status: AccessLogField.contextStatus()
+                    })
+                ),
                 stageName: props.stageName // Your API stage
             },
             binaryMediaTypes: ["*/*"],
