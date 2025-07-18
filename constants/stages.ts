@@ -45,12 +45,23 @@ export const STAGES: StageConfig[] = [
             min: 1,
             max: 2
         }
+    },
+    {
+        stageName: Stage.Prod,
+        env: { region: Region.NRT, account: AWS_ACCOUNT },
+        isProd: true,
+        secretArn: `arn:aws:secretsmanager:${Region.NRT}:${AWS_ACCOUNT}:secret:prod/taiger/portal/service/env-74nBbU`,
+        s3BucketArns: [
+            `arn:aws:s3:::taiger-file-storage-production-storage`,
+            `arn:aws:s3:::taiger-file-storage-public-files-production`
+        ],
+        ecsEc2Capacity: {
+            min: 1,
+            max: 2
+        },
+        ecsTaskCapacity: {
+            min: 1,
+            max: 2
+        }
     }
-    // {
-    //     stageName: Stage.Prod_NA,
-    //     env: { region: Region.NRT, account: AWS_ACCOUNT },
-    //     isProd: true,
-    //     stageName: DomainStage.Prod,
-    //     secretArn: `arn:aws:secretsmanager:${Region.NRT}:${AWS_ACCOUNT}:secret:prod/taiger/portal/service/env-486S9W`
-    // }
 ];
