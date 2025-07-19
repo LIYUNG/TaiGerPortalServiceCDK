@@ -2,6 +2,8 @@
 import { Stage, StageProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { EcsEc2Stack } from "../stacks/ecs-ec2-stack";
+import { MonitorStack } from "../stacks/monitor-stack";
+import { APPLICATION_NAME } from "../configuration";
 // import { CognitoStack } from "../stacks/cognito-stack";
 // import { AuthStack } from "./authstack";
 
@@ -18,10 +20,13 @@ interface DeploymentProps extends StageProps {
         min: number;
         max: number;
     };
+    slackWorkspaceId?: string;
+    slackChannelId?: string;
 }
 
 export class PipelineAppStage extends Stage {
     readonly ecsEc2Stack: EcsEc2Stack;
+    readonly monitorStack: MonitorStack;
     constructor(scope: Construct, id: string, props: DeploymentProps) {
         super(scope, id, props);
 
@@ -32,6 +37,17 @@ export class PipelineAppStage extends Stage {
         this.ecsEc2Stack = new EcsEc2Stack(this, `EcsEc2Stack-${props.stageName}`, {
             ...props
         });
+
+        this.monitorStack = new MonitorStack(
+            this,
+            `${APPLICATION_NAME}MonitorStack-${props.stageName}`,
+            {
+                ...props,
+                api: this.ecsEc2Stack.api,
+                slackWorkspaceId: props.slackWorkspaceId,
+                slackChannelId: props.slackChannelId
+            }
+        );
 
         // new EcsFargateStack(this, `EcsFargateStack-${props.stageName}`, {
         //     env: props.env,

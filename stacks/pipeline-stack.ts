@@ -155,7 +155,9 @@ export class TaiGerPortalServicePipelineStack extends Stack {
                 secretArn,
                 s3BucketArns,
                 ecsEc2Capacity,
-                ecsTaskCapacity
+                ecsTaskCapacity,
+                slackWorkspaceId,
+                slackChannelId
             }) => {
                 const stage = new PipelineAppStage(this, `${stageName}-Stage`, {
                     env,
@@ -164,7 +166,9 @@ export class TaiGerPortalServicePipelineStack extends Stack {
                     secretArn,
                     s3BucketArns,
                     ecsEc2Capacity,
-                    ecsTaskCapacity
+                    ecsTaskCapacity,
+                    slackWorkspaceId,
+                    slackChannelId
                 });
                 if (isProd) {
                     pipeline.addStage(stage, {

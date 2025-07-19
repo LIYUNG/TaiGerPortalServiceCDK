@@ -17,6 +17,8 @@ interface StageConfig {
     isProd: boolean;
     secretArn: string;
     s3BucketArns: string[];
+    slackWorkspaceId: string;
+    slackChannelId: string;
     ecsEc2Capacity: {
         min: number;
         max: number;
@@ -37,6 +39,8 @@ export const STAGES: StageConfig[] = [
             `arn:aws:s3:::taiger-file-storage`,
             `arn:aws:s3:::taiger-file-storage-development-public`
         ],
+        slackWorkspaceId: "T074TTD76BG",
+        slackChannelId: "C07CR6VPT8A",
         ecsEc2Capacity: {
             min: 1,
             max: 2
@@ -55,6 +59,8 @@ export const STAGES: StageConfig[] = [
             `arn:aws:s3:::taiger-file-storage-production-storage`,
             `arn:aws:s3:::taiger-file-storage-public-files-production`
         ],
+        slackWorkspaceId: "T074TTD76BG",
+        slackChannelId: "C0964M663M5",
         ecsEc2Capacity: {
             min: 1,
             max: 2
