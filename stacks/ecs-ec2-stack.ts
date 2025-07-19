@@ -246,9 +246,16 @@ export class EcsEc2Stack extends Stack {
                 streamPrefix: `${APPLICATION_NAME}-ecs-ec2-${props.stageName}`,
                 logGroup: logGroup
             }),
+            environment: {
+                ORIGIN: props.isProd
+                    ? `https://${DOMAIN_NAME}`
+                    : `https://${props.stageName}.${DOMAIN_NAME}`,
+                API_ORIGIN: props.isProd
+                    ? `https://${DOMAIN_NAME}`
+                    : `https://${props.stageName}.${DOMAIN_NAME}`
+            },
             secrets: {
                 // Add SSM parameters as environment variables
-                API_ORIGIN: Secret.fromSecretsManager(secret, "API_ORIGIN"),
                 TENANT_ID: Secret.fromSecretsManager(secret, "TENANT_ID"),
                 JWT_SECRET: Secret.fromSecretsManager(secret, "JWT_SECRET"),
                 HTTPS_PORT: Secret.fromSecretsManager(secret, "HTTPS_PORT"),
@@ -264,7 +271,6 @@ export class EcsEc2Stack extends Stack {
                 SMTP_PORT: Secret.fromSecretsManager(secret, "SMTP_PORT"),
                 SMTP_USERNAME: Secret.fromSecretsManager(secret, "SMTP_USERNAME"),
                 SMTP_PASSWORD: Secret.fromSecretsManager(secret, "SMTP_PASSWORD"),
-                ORIGIN: Secret.fromSecretsManager(secret, "ORIGIN"),
                 CLEAN_UP_SCHEDULE: Secret.fromSecretsManager(secret, "CLEAN_UP_SCHEDULE"),
                 WEEKLY_TASKS_REMINDER_SCHEDULE: Secret.fromSecretsManager(
                     secret,
