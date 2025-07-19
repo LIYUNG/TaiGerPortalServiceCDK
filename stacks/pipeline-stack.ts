@@ -5,6 +5,7 @@ import {
     CodeBuildStep,
     ManualApprovalStep
 } from "aws-cdk-lib/pipelines";
+import { PipelineType } from "aws-cdk-lib/aws-codepipeline";
 import * as codepipeline_actions from "aws-cdk-lib/aws-codepipeline-actions";
 import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
@@ -124,6 +125,7 @@ export class TaiGerPortalServicePipelineStack extends Stack {
         // Create the high-level CodePipeline
         const pipeline = new CodePipeline(this, `${APP_NAME_TAIGER_SERVICE}Pipeline`, {
             pipelineName: `${APP_NAME_TAIGER_SERVICE}Pipeline`,
+            pipelineType: PipelineType.V2,
             synth: pipelineSourceBuildStep,
             codeBuildDefaults: {
                 rolePolicy: [
