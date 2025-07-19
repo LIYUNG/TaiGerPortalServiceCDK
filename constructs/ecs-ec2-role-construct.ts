@@ -48,7 +48,7 @@ export class EcsEc2Role extends Construct {
 
         this.role.addToPolicy(
             new iam.PolicyStatement({
-                actions: ["ses:SendEmail"],
+                actions: ["ses:SendEmail", "ses:SendRawEmail"],
                 resources: ["*"] // SES email sending permissions
             })
         );
@@ -101,7 +101,7 @@ export class EcsEc2Role extends Construct {
 
         this.role.addToPolicy(
             new iam.PolicyStatement({
-                actions: ["ses:SendEmail"],
+                actions: ["ses:SendEmail", "ses:SendRawEmail"],
                 resources: [
                     `arn:aws:ses:${props?.region}:${AWS_ACCOUNT}:identity/taigerconsultancy-portal.com`,
                     // `arn:aws:ses:${props?.region}:${AWS_ACCOUNT}:identity/beta.taigerconsultancy-portal.com`,
