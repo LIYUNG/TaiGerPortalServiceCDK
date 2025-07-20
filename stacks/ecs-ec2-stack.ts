@@ -456,10 +456,16 @@ export class EcsEc2Stack extends Stack {
             defaultCorsPreflightOptions: {
                 allowOrigins: ["*"], // Restrict as necessary
                 allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // ✅ Keep OPTIONS
-                allowHeaders: ["Authorization", "Content-Type", "X-auth", "tenantId"],
+                allowHeaders: [
+                    "Authorization",
+                    "Content-Type",
+                    "X-auth",
+                    "tenantId",
+                    "Accept-Encoding"
+                ],
                 allowCredentials: true // ✅ Required when using credentials
             },
-            description: "This service handles requests with Ecs from customer portal.",
+            description: "This service handles requests with Ecs from TaiGer portal.",
             deployOptions: {
                 accessLogDestination: new LogGroupLogDestination(logGroupApi),
                 accessLogFormat: AccessLogFormat.custom(
@@ -490,7 +496,7 @@ export class EcsEc2Stack extends Stack {
                 ),
                 stageName: props.stageName // Your API stage
             },
-            minCompressionSize: Size.kibibytes(256),
+            minCompressionSize: Size.kibibytes(0),
             binaryMediaTypes: ["*/*"],
             endpointConfiguration: { types: [EndpointType.REGIONAL] },
             cloudWatchRole: true
