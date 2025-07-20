@@ -490,7 +490,7 @@ export class EcsEc2Stack extends Stack {
                 ),
                 stageName: props.stageName // Your API stage
             },
-            minCompressionSize: Size.mebibytes(10),
+            minCompressionSize: Size.kibibytes(256),
             binaryMediaTypes: ["*/*"],
             endpointConfiguration: { types: [EndpointType.REGIONAL] },
             cloudWatchRole: true
