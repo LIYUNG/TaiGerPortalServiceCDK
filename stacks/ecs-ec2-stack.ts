@@ -23,7 +23,7 @@ import {
     PlacementStrategy,
     Secret
 } from "aws-cdk-lib/aws-ecs";
-import { aws_secretsmanager, Duration, Stack, StackProps } from "aws-cdk-lib";
+import { aws_secretsmanager, Duration, Size, Stack, StackProps } from "aws-cdk-lib";
 import { EcsEc2Role } from "../constructs";
 import { Repository } from "aws-cdk-lib/aws-ecr";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
@@ -490,6 +490,7 @@ export class EcsEc2Stack extends Stack {
                 ),
                 stageName: props.stageName // Your API stage
             },
+            minCompressionSize: Size.mebibytes(10),
             binaryMediaTypes: ["*/*"],
             endpointConfiguration: { types: [EndpointType.REGIONAL] },
             cloudWatchRole: true
