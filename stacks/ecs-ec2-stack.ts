@@ -317,7 +317,8 @@ export class EcsEc2Stack extends Stack {
                     secret,
                     "AWS_TRANSCRIPT_ANALYSER_APIG_URL"
                 ),
-                OPENAI_API_KEY: Secret.fromSecretsManager(secret, "OPENAI_API_KEY")
+                OPENAI_API_KEY: Secret.fromSecretsManager(secret, "OPENAI_API_KEY"),
+                POSTGRES_URI: Secret.fromSecretsManager(secret, "POSTGRES_URI")
             }
         });
 
