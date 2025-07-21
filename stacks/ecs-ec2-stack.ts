@@ -344,7 +344,7 @@ export class EcsEc2Stack extends Stack {
 
         scaling.scaleOnCpuUtilization(`${APPLICATION_NAME}-EcsEc2CpuScaling-${props.stageName}`, {
             targetUtilizationPercent: 60,
-            scaleInCooldown: Duration.seconds(60),
+            scaleInCooldown: Duration.seconds(300),
             scaleOutCooldown: Duration.seconds(60)
         });
 
