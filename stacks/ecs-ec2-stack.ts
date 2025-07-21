@@ -31,11 +31,13 @@ import { ManagedPolicy, Role } from "aws-cdk-lib/aws-iam";
 import { ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { ApplicationProtocol } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { SpotRequestType } from "aws-cdk-lib/aws-ec2";
+import { InstanceType } from "aws-cdk-lib/aws-ec2";
 
 interface EcsEc2StackProps extends StackProps {
     stageName: string;
     secretArn: string;
     s3BucketArns: string[];
+    instanceType: InstanceType;
     ecsEc2Capacity: {
         min: number;
         max: number;
@@ -105,11 +107,6 @@ export class EcsEc2Stack extends Stack {
             cdk.aws_ec2.Port.tcp(3000),
             "Allow HTTP from ALB"
         );
-        ecsEc2SecurityGroup.addEgressRule(
-            anyIp4,
-            cdk.aws_ec2.Port.allTraffic(),
-            "Allow all outbound traffic"
-        );
 
         const ecsInstanceRole = new Role(
             this,
@@ -151,10 +148,7 @@ export class EcsEc2Stack extends Stack {
             this,
             `${APPLICATION_NAME}-LaunchTemplate-${props.stageName}`,
             {
-                instanceType: cdk.aws_ec2.InstanceType.of(
-                    cdk.aws_ec2.InstanceClass.T4G,
-                    cdk.aws_ec2.InstanceSize.NANO
-                ),
+                instanceType: props.instanceType,
                 machineImage: cdk.aws_ecs.EcsOptimizedImage.amazonLinux2023(
                     cdk.aws_ecs.AmiHardwareType.ARM,
                     {

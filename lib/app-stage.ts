@@ -4,6 +4,7 @@ import { Construct } from "constructs";
 import { EcsEc2Stack } from "../stacks/ecs-ec2-stack";
 import { MonitorStack } from "../stacks/monitor-stack";
 import { APPLICATION_NAME } from "../configuration";
+import { InstanceType } from "aws-cdk-lib/aws-ec2";
 // import { CognitoStack } from "../stacks/cognito-stack";
 // import { AuthStack } from "./authstack";
 
@@ -12,6 +13,7 @@ interface DeploymentProps extends StageProps {
     isProd: boolean;
     secretArn: string;
     s3BucketArns: string[];
+    instanceType: InstanceType;
     ecsEc2Capacity: {
         min: number;
         max: number;

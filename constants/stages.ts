@@ -1,5 +1,7 @@
+import { InstanceType } from "aws-cdk-lib/aws-ec2";
 import { AWS_ACCOUNT } from "../configuration";
 import { Region } from "./regions";
+import { aws_ec2 } from "aws-cdk-lib";
 
 export enum Stage {
     Beta = "beta",
@@ -19,6 +21,7 @@ interface StageConfig {
     s3BucketArns: string[];
     slackWorkspaceId: string;
     slackChannelId: string;
+    instanceType: InstanceType;
     ecsEc2Capacity: {
         min: number;
         max: number;
@@ -41,6 +44,7 @@ export const STAGES: StageConfig[] = [
         ],
         slackWorkspaceId: "T074TTD76BG",
         slackChannelId: "C07CR6VPT8A",
+        instanceType: aws_ec2.InstanceType.of(aws_ec2.InstanceClass.T4G, aws_ec2.InstanceSize.NANO),
         ecsEc2Capacity: {
             min: 1,
             max: 2
@@ -61,13 +65,14 @@ export const STAGES: StageConfig[] = [
         ],
         slackWorkspaceId: "T074TTD76BG",
         slackChannelId: "C0964M663M5",
+        instanceType: aws_ec2.InstanceType.of(aws_ec2.InstanceClass.T4G, aws_ec2.InstanceSize.NANO),
         ecsEc2Capacity: {
-            min: 1,
-            max: 2
+            min: 2,
+            max: 4
         },
         ecsTaskCapacity: {
-            min: 1,
-            max: 2
+            min: 2,
+            max: 4
         }
     }
 ];
