@@ -166,9 +166,11 @@ export class EcsEc2Stack extends Stack {
                 userData: cdk.aws_ec2.UserData.forLinux({
                     shebang: "#!/bin/bash"
                 }),
-                spotOptions: {
-                    requestType: SpotRequestType.ONE_TIME
-                }
+                spotOptions: !props.isProd
+                    ? {
+                          requestType: SpotRequestType.ONE_TIME
+                      }
+                    : undefined
             }
         );
 
