@@ -254,7 +254,6 @@ export class EcsEc2Stack extends Stack {
                 // Add SSM parameters as environment variables
                 TENANT_ID: Secret.fromSecretsManager(secret, "TENANT_ID"),
                 JWT_SECRET: Secret.fromSecretsManager(secret, "JWT_SECRET"),
-                HTTPS_PORT: Secret.fromSecretsManager(secret, "HTTPS_PORT"),
                 JWT_EXPIRE: Secret.fromSecretsManager(secret, "JWT_EXPIRE"),
                 MONGODB_URI: Secret.fromSecretsManager(secret, "MONGODB_URI"),
                 PORT: Secret.fromSecretsManager(secret, "PORT"),
@@ -263,7 +262,6 @@ export class EcsEc2Stack extends Stack {
                     secret,
                     "ESCALATION_DEADLINE_DAYS_TRIGGER"
                 ),
-                SMTP_HOST: Secret.fromSecretsManager(secret, "SMTP_HOST"),
                 SMTP_PORT: Secret.fromSecretsManager(secret, "SMTP_PORT"),
                 SMTP_USERNAME: Secret.fromSecretsManager(secret, "SMTP_USERNAME"),
                 SMTP_PASSWORD: Secret.fromSecretsManager(secret, "SMTP_PASSWORD"),
@@ -304,7 +302,6 @@ export class EcsEc2Stack extends Stack {
                 ),
                 AWS_S3_BUCKET_NAME: Secret.fromSecretsManager(secret, "AWS_S3_BUCKET_NAME"),
                 AWS_REGION: Secret.fromSecretsManager(secret, "AWS_REGION"),
-                AWS_LOG_GROUP: Secret.fromSecretsManager(secret, "AWS_LOG_GROUP"),
                 AWS_TRANSCRIPT_ANALYSER_ROLE: Secret.fromSecretsManager(
                     secret,
                     "AWS_TRANSCRIPT_ANALYSER_ROLE"

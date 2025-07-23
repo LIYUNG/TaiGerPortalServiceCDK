@@ -167,7 +167,6 @@ export class EcsFargateStack extends Stack {
                         API_ORIGIN: ecs.Secret.fromSecretsManager(secret, "API_ORIGIN"),
                         TENANT_ID: ecs.Secret.fromSecretsManager(secret, "TENANT_ID"),
                         JWT_SECRET: ecs.Secret.fromSecretsManager(secret, "JWT_SECRET"),
-                        HTTPS_PORT: ecs.Secret.fromSecretsManager(secret, "HTTPS_PORT"),
                         JWT_EXPIRE: ecs.Secret.fromSecretsManager(secret, "JWT_EXPIRE"),
                         MONGODB_URI: ecs.Secret.fromSecretsManager(secret, "MONGODB_URI"),
                         PORT: ecs.Secret.fromSecretsManager(secret, "PORT"),
@@ -176,10 +175,6 @@ export class EcsFargateStack extends Stack {
                             secret,
                             "ESCALATION_DEADLINE_DAYS_TRIGGER"
                         ),
-                        SMTP_HOST: ecs.Secret.fromSecretsManager(secret, "SMTP_HOST"),
-                        SMTP_PORT: ecs.Secret.fromSecretsManager(secret, "SMTP_PORT"),
-                        SMTP_USERNAME: ecs.Secret.fromSecretsManager(secret, "SMTP_USERNAME"),
-                        SMTP_PASSWORD: ecs.Secret.fromSecretsManager(secret, "SMTP_PASSWORD"),
                         ORIGIN: ecs.Secret.fromSecretsManager(secret, "ORIGIN"),
                         CLEAN_UP_SCHEDULE: ecs.Secret.fromSecretsManager(
                             secret,
@@ -231,7 +226,6 @@ export class EcsFargateStack extends Stack {
                             "AWS_S3_BUCKET_NAME"
                         ),
                         AWS_REGION: ecs.Secret.fromSecretsManager(secret, "AWS_REGION"),
-                        AWS_LOG_GROUP: ecs.Secret.fromSecretsManager(secret, "AWS_LOG_GROUP"),
                         AWS_TRANSCRIPT_ANALYSER_ROLE: ecs.Secret.fromSecretsManager(
                             secret,
                             "AWS_TRANSCRIPT_ANALYSER_ROLE"
