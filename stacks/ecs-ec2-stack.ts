@@ -262,9 +262,6 @@ export class EcsEc2Stack extends Stack {
                     secret,
                     "ESCALATION_DEADLINE_DAYS_TRIGGER"
                 ),
-                SMTP_PORT: Secret.fromSecretsManager(secret, "SMTP_PORT"),
-                SMTP_USERNAME: Secret.fromSecretsManager(secret, "SMTP_USERNAME"),
-                SMTP_PASSWORD: Secret.fromSecretsManager(secret, "SMTP_PASSWORD"),
                 CLEAN_UP_SCHEDULE: Secret.fromSecretsManager(secret, "CLEAN_UP_SCHEDULE"),
                 WEEKLY_TASKS_REMINDER_SCHEDULE: Secret.fromSecretsManager(
                     secret,
@@ -311,7 +308,10 @@ export class EcsEc2Stack extends Stack {
                     "AWS_TRANSCRIPT_ANALYSER_APIG_URL"
                 ),
                 OPENAI_API_KEY: Secret.fromSecretsManager(secret, "OPENAI_API_KEY"),
-                POSTGRES_URI: Secret.fromSecretsManager(secret, "POSTGRES_URI")
+                POSTGRES_URI: Secret.fromSecretsManager(secret, "POSTGRES_URI"),
+                GOOGLE_CLIENT_ID: Secret.fromSecretsManager(secret, "GOOGLE_CLIENT_ID"),
+                GOOGLE_CLIENT_SECRET: Secret.fromSecretsManager(secret, "GOOGLE_CLIENT_SECRET"),
+                GOOGLE_REDIRECT_URL: Secret.fromSecretsManager(secret, "GOOGLE_REDIRECT_URL")
             }
         });
 
