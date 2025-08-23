@@ -52,8 +52,7 @@ export class TaiGerPortalServicePipelineStack extends Stack {
         // Step 1: Create an ECR repository
         const ecrRepo = new Repository(this, `${APP_NAME_TAIGER_SERVICE}-EcrRepo`, {
             repositoryName: ECR_REPO_NAME,
-            imageScanOnPush: true,
-            imageTagMutability: TagMutability.IMMUTABLE
+            imageScanOnPush: true
         });
 
         new CfnReplicationConfiguration(
@@ -88,11 +87,7 @@ export class TaiGerPortalServicePipelineStack extends Stack {
             exportName: `${APP_NAME_TAIGER_SERVICE}-EcrRepoUri`
         });
 
-        const imageTag = new Date()
-            .toISOString() // 2025-08-23T23:12:51.227Z
-            .replace(/[:.]/g, "-") // replace : and . with -
-            .replace("T", "-") // replace T with -
-            .replace("Z", ""); // remove Z
+        const imageTag = "latest";
 
         // run docker comment.
         const prebuild = new CodeBuildStep("Prebuild", {
