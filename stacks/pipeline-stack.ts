@@ -23,7 +23,7 @@ import {
 import { PipelineAppStage } from "../lib/app-stage";
 import { Region, STAGES } from "../constants";
 import { LinuxBuildImage } from "aws-cdk-lib/aws-codebuild";
-import { CfnReplicationConfiguration, Repository } from "aws-cdk-lib/aws-ecr";
+import { CfnReplicationConfiguration, Repository, TagMutability } from "aws-cdk-lib/aws-ecr";
 
 export class TaiGerPortalServicePipelineStack extends Stack {
     constructor(scope: Construct, id: string, props?: StackProps) {
@@ -51,7 +51,9 @@ export class TaiGerPortalServicePipelineStack extends Stack {
 
         // Step 1: Create an ECR repository
         const ecrRepo = new Repository(this, `${APP_NAME_TAIGER_SERVICE}-EcrRepo`, {
-            repositoryName: ECR_REPO_NAME
+            repositoryName: ECR_REPO_NAME,
+            imageScanOnPush: true,
+            imageTagMutability: TagMutability.IMMUTABLE
         });
 
         new CfnReplicationConfiguration(

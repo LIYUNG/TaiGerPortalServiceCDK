@@ -17,6 +17,7 @@ import { ApiGatewayDomain, LoadBalancerTarget } from "aws-cdk-lib/aws-route53-ta
 import { APPLICATION_NAME, DOMAIN_NAME, ECR_REPO_NAME } from "../configuration";
 import {
     ContainerImage,
+    ContainerInsights,
     DeploymentControllerType,
     Ec2Service,
     LogDriver,
@@ -29,7 +30,7 @@ import { Repository } from "aws-cdk-lib/aws-ecr";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { ManagedPolicy, Role } from "aws-cdk-lib/aws-iam";
 import { ServicePrincipal } from "aws-cdk-lib/aws-iam";
-import { ApplicationProtocol } from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import { ApplicationProtocol, SslPolicy } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { SpotRequestType } from "aws-cdk-lib/aws-ec2";
 import { InstanceType } from "aws-cdk-lib/aws-ec2";
 
@@ -193,7 +194,8 @@ export class EcsEc2Stack extends Stack {
             `${APPLICATION_NAME}-Cluster-${props.stageName}`,
             {
                 clusterName: `${APPLICATION_NAME}-ec2-cluster-${props.stageName}`,
-                vpc
+                vpc,
+                containerInsightsV2: ContainerInsights.ENABLED
             }
         );
 
@@ -238,6 +240,7 @@ export class EcsEc2Stack extends Stack {
             image: ContainerImage.fromEcrRepository(ecrRepoEcs, imageDigest),
             portMappings: [{ containerPort: 3000, hostPort: 3000 }],
             memoryReservationMiB: 256,
+            readonlyRootFilesystem: true,
             logging: LogDriver.awsLogs({
                 streamPrefix: `${APPLICATION_NAME}-ecs-ec2-${props.stageName}`,
                 logGroup: logGroup
@@ -370,6 +373,14 @@ export class EcsEc2Stack extends Stack {
             }
         );
 
+        const albLogsBucket = new cdk.aws_s3.Bucket(
+            this,
+            `${APPLICATION_NAME}-AlbLogsBucket-${props.stageName}`,
+            {
+                bucketName: `${APPLICATION_NAME}-alb-logs-${props.stageName}`.toLowerCase(),
+                blockPublicAccess: cdk.aws_s3.BlockPublicAccess.BLOCK_ALL
+            }
+        );
         // Create ALB
         const alb = new cdk.aws_elasticloadbalancingv2.ApplicationLoadBalancer(
             this,
@@ -389,8 +400,12 @@ export class EcsEc2Stack extends Stack {
             target: RecordTarget.fromAlias(new LoadBalancerTarget(alb))
         });
 
+        // Enable access logging for the ALB
+        alb.logAccessLogs(albLogsBucket);
+
         const listener = alb.addListener("PublicListener", {
             protocol: ApplicationProtocol.HTTPS,
+            sslPolicy: SslPolicy.RECOMMENDED_TLS,
             open: true,
             certificates: [albCertificate]
         });
