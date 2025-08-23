@@ -88,7 +88,11 @@ export class TaiGerPortalServicePipelineStack extends Stack {
             exportName: `${APP_NAME_TAIGER_SERVICE}-EcrRepoUri`
         });
 
-        const imageTag = new Date().toISOString(); // e.g. 2025-08-24T12:00:00.000Z
+        const imageTag = new Date()
+            .toISOString() // 2025-08-23T23:12:51.227Z
+            .replace(/[:.]/g, "-") // replace : and . with -
+            .replace("T", "-") // replace T with -
+            .replace("Z", ""); // remove Z
 
         // run docker comment.
         const prebuild = new CodeBuildStep("Prebuild", {
