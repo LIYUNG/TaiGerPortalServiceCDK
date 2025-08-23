@@ -88,15 +88,17 @@ export class TaiGerPortalServicePipelineStack extends Stack {
             exportName: `${APP_NAME_TAIGER_SERVICE}-EcrRepoUri`
         });
 
+        const imageTag = new Date().toISOString().split("T")[0]; // e.g. 2025-08-24
+
         // run docker comment.
         const prebuild = new CodeBuildStep("Prebuild", {
             input: sourceCode,
             primaryOutputDirectory: ".",
             commands: [
                 `aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO_URI`, // Log in to ECR
-                `docker build --platform linux/arm64 -t ${ecrRepo.repositoryUri} .`, // Build the Docker image
-                `docker push ${ecrRepo.repositoryUri}`, // Push the Docker image to ECR
-                `aws ecr describe-images --repository-name ${ecrRepo.repositoryName} --image-ids imageTag=${new Date().toISOString().split("T")[0]} --query 'imageDetails[0].imageDigest' --output text > digest.txt`
+                `docker build --platform linux/arm64 -t ${ecrRepo.repositoryUri}:${imageTag} .`, // Build the Docker image
+                `docker push ${ecrRepo.repositoryUri}:${imageTag}`, // Push the Docker image to ECR
+                `aws ecr describe-images --repository-name ${ecrRepo.repositoryName} --image-ids imageTag=${imageTag} --query 'imageDetails[0].imageDigest' --output text > digest.txt`
             ],
             buildEnvironment: {
                 buildImage: LinuxBuildImage.AMAZON_LINUX_2_ARM_3, // make sure it matches the requested image platform.
