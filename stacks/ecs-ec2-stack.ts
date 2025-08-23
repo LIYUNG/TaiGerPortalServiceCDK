@@ -380,7 +380,12 @@ export class EcsEc2Stack extends Stack {
                 bucketName: `${APPLICATION_NAME}-alb-logs-${props.stageName}`.toLowerCase(),
                 blockPublicAccess: cdk.aws_s3.BlockPublicAccess.BLOCK_ALL,
                 enforceSSL: true,
-                encryption: cdk.aws_s3.BucketEncryption.KMS_MANAGED
+                encryption: cdk.aws_s3.BucketEncryption.KMS_MANAGED,
+                lifecycleRules: [
+                    {
+                        expiration: cdk.Duration.days(90)
+                    }
+                ]
             }
         );
         // Create ALB
