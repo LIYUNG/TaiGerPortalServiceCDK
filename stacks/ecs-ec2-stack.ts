@@ -81,7 +81,13 @@ export class EcsEc2Stack extends Stack {
             `${APPLICATION_NAME}-ecs-ec2-Vpc-${props.stageName}`,
             {
                 natGateways: 0,
-                subnetConfiguration: [{ name: "Public", subnetType: cdk.aws_ec2.SubnetType.PUBLIC }]
+                subnetConfiguration: [
+                    {
+                        name: "Public",
+                        subnetType: cdk.aws_ec2.SubnetType.PUBLIC,
+                        mapPublicIpOnLaunch: false
+                    }
+                ]
             }
         );
 
