@@ -164,7 +164,6 @@ export class EcsFargateStack extends Stack {
                     containerPort: 3000,
                     secrets: {
                         // Add SSM parameters as environment variables
-                        API_ORIGIN: ecs.Secret.fromSecretsManager(secret, "API_ORIGIN"),
                         TENANT_ID: ecs.Secret.fromSecretsManager(secret, "TENANT_ID"),
                         JWT_SECRET: ecs.Secret.fromSecretsManager(secret, "JWT_SECRET"),
                         JWT_EXPIRE: ecs.Secret.fromSecretsManager(secret, "JWT_EXPIRE"),

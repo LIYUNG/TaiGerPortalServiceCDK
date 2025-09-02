@@ -238,9 +238,7 @@ export class EcsEc2Stack extends Stack {
         const ORIGIN = props.isProd
             ? `https://${DOMAIN_NAME}`
             : `https://${props.stageName}.${DOMAIN_NAME}`;
-        const API_ORIGIN = props.isProd
-            ? `https://${DOMAIN_NAME}`
-            : `https://${props.stageName}.${DOMAIN_NAME}`;
+
         taskDefinition.addContainer("EcsEc2Container", {
             image: ContainerImage.fromEcrRepository(ecrRepoEcs, imageDigest),
             portMappings: [{ containerPort: 3000, hostPort: 3000 }],
@@ -251,8 +249,7 @@ export class EcsEc2Stack extends Stack {
                 logGroup: logGroup
             }),
             environment: {
-                ORIGIN: ORIGIN,
-                API_ORIGIN: API_ORIGIN
+                ORIGIN: ORIGIN
             },
             secrets: {
                 // Add SSM parameters as environment variables
