@@ -513,6 +513,7 @@ export class EcsEc2Stack extends Stack {
             },
             minCompressionSize: Size.kibibytes(0),
             binaryMediaTypes: ["*/*"],
+            disableExecuteApiEndpoint: true,
             endpointConfiguration: { types: [EndpointType.REGIONAL] },
             cloudWatchRole: true
         });
