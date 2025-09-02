@@ -81,7 +81,7 @@ export class EcsEc2Stack extends Stack {
             `${APPLICATION_NAME}-ecs-ec2-Vpc-${props.stageName}`,
             {
                 natGateways: 0,
-                maxAzs: 2, // ALB requires at least 2 AZs
+                maxAzs: 3,
                 subnetConfiguration: [{ name: "Public", subnetType: cdk.aws_ec2.SubnetType.PUBLIC }]
             }
         );
