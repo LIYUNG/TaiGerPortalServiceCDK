@@ -235,7 +235,12 @@ export class EcsEc2Stack extends Stack {
                 taskRole: ecsEc2Role.role
             }
         );
-
+        const ORIGIN = props.isProd
+            ? `https://${DOMAIN_NAME}`
+            : `https://${props.stageName}.${DOMAIN_NAME}`;
+        const API_ORIGIN = props.isProd
+            ? `https://${DOMAIN_NAME}`
+            : `https://${props.stageName}.${DOMAIN_NAME}`;
         taskDefinition.addContainer("EcsEc2Container", {
             image: ContainerImage.fromEcrRepository(ecrRepoEcs, imageDigest),
             portMappings: [{ containerPort: 3000, hostPort: 3000 }],
@@ -246,12 +251,8 @@ export class EcsEc2Stack extends Stack {
                 logGroup: logGroup
             }),
             environment: {
-                ORIGIN: props.isProd
-                    ? `https://${DOMAIN_NAME}`
-                    : `https://${props.stageName}.${DOMAIN_NAME}`,
-                API_ORIGIN: props.isProd
-                    ? `https://${DOMAIN_NAME}`
-                    : `https://${props.stageName}.${DOMAIN_NAME}`
+                ORIGIN: ORIGIN,
+                API_ORIGIN: API_ORIGIN
             },
             secrets: {
                 // Add SSM parameters as environment variables
@@ -470,7 +471,7 @@ export class EcsEc2Stack extends Stack {
         this.api = new RestApi(this, `${APPLICATION_NAME}-EcsEc2APIG-${props.stageName}`, {
             restApiName: `${APPLICATION_NAME}-api-${props.stageName}`,
             defaultCorsPreflightOptions: {
-                allowOrigins: ["*"], // Restrict as necessary
+                allowOrigins: [ORIGIN], // Restrict as necessary
                 allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // ✅ Keep OPTIONS
                 allowHeaders: [
                     "Authorization",
