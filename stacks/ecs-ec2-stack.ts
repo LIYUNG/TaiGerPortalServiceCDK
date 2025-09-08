@@ -86,14 +86,20 @@ export class EcsEc2Stack extends Stack {
             }
         );
 
-        const anyIp4 = cdk.aws_ec2.Peer.anyIpv4();
+        const cloudFrontPrefixList = cdk.aws_ec2.PrefixList.fromLookup(
+            this,
+            "CloudFrontOriginFacing",
+            {
+                prefixListName: "com.amazonaws.global.cloudfront.origin-facing"
+            }
+        );
         const albSecurityGroup = new cdk.aws_ec2.SecurityGroup(this, `${APPLICATION_NAME}-ALB-SG`, {
             vpc,
             description: `${APPLICATION_NAME} ALB Security Group`
         });
 
         albSecurityGroup.addIngressRule(
-            anyIp4,
+            cdk.aws_ec2.Peer.prefixList(cloudFrontPrefixList.prefixListId),
             cdk.aws_ec2.Port.tcp(443),
             "Allow HTTPS from public"
         );

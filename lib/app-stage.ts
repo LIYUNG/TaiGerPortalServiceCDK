@@ -37,7 +37,8 @@ export class PipelineAppStage extends Stage {
         //     stageName: props.stageName
         // });
         this.ecsEc2Stack = new EcsEc2Stack(this, `EcsEc2Stack-${props.stageName}`, {
-            ...props
+            ...props,
+            terminationProtection: props.isProd
         });
 
         this.monitorStack = new MonitorStack(
@@ -47,7 +48,8 @@ export class PipelineAppStage extends Stage {
                 ...props,
                 api: this.ecsEc2Stack.api,
                 slackWorkspaceId: props.slackWorkspaceId,
-                slackChannelId: props.slackChannelId
+                slackChannelId: props.slackChannelId,
+                terminationProtection: props.isProd
             }
         );
 
