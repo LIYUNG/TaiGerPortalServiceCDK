@@ -23,5 +23,17 @@
         "Id": "/hostedzone/Z08841911XEWSGPCLIELI",
         "Name": "taigerconsultancy-portal.com."
     },
-    "ssm:account=669131042313:parameterName=/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended/image_id:region=us-west-2": "ami-03ed562ba0a9f6bf1"
+    "ssm:account=669131042313:parameterName=/aws/service/ecs/optimized-ami/amazon-linux-2023/arm64/recommended/image_id:region=us-west-2": "ami-03ed562ba0a9f6bf1",
+    "cc-api-provider:account=669131042313:expectedMatchCount=exactly-one:propertiesToReturn.0=PrefixListId:propertyMatch.PrefixListName=com.amazonaws.global.cloudfront.origin-facing:region=us-east-1:typeName=AWS$:$:EC2$:$:PrefixList": [
+        {
+            "PrefixListId": "pl-3b927c52",
+            "Identifier": "pl-3b927c52"
+        }
+    ],
+    "cc-api-provider:account=669131042313:expectedMatchCount=exactly-one:propertiesToReturn.0=PrefixListId:propertyMatch.PrefixListName=com.amazonaws.global.cloudfront.origin-facing:region=us-west-2:typeName=AWS$:$:EC2$:$:PrefixList": [
+        {
+            "PrefixListId": "pl-82a045eb",
+            "Identifier": "pl-82a045eb"
+        }
+    ]
 }
