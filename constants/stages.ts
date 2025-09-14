@@ -44,7 +44,10 @@ export const STAGES: StageConfig[] = [
         ],
         slackWorkspaceId: "T074TTD76BG",
         slackChannelId: "C07CR6VPT8A",
-        instanceType: aws_ec2.InstanceType.of(aws_ec2.InstanceClass.T4G, aws_ec2.InstanceSize.NANO),
+        instanceType: aws_ec2.InstanceType.of(
+            aws_ec2.InstanceClass.T4G,
+            aws_ec2.InstanceSize.MICRO
+        ),
         ecsEc2Capacity: {
             min: 1,
             max: 2
