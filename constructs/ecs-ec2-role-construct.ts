@@ -65,7 +65,7 @@ export class EcsEc2Role extends Construct {
             new iam.PolicyStatement({
                 actions: ["sts:AssumeRole"],
                 resources: [
-                    `arn:aws:execute-api:${props?.region}:${AWS_ACCOUNT}:*/*/*/*` // Replace with your API Gateway ARN
+                    `arn:aws:iam::${AWS_ACCOUNT}:role/transcript-analyzer-role-${props?.stageName}`
                 ]
             })
         );
