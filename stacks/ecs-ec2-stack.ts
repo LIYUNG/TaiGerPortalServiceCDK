@@ -126,7 +126,9 @@ export class EcsEc2Stack extends Stack {
                     ManagedPolicy.fromAwsManagedPolicyName(
                         "service-role/AmazonEC2ContainerServiceforEC2Role"
                     ),
-                    ManagedPolicy.fromAwsManagedPolicyName("AmazonEC2ContainerRegistryReadOnly")
+                    ManagedPolicy.fromAwsManagedPolicyName("AmazonEC2ContainerRegistryReadOnly"),
+                    // Required for AWS Systems Manager to manage EC2 instances (SSM.1 compliance)
+                    ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore")
                 ]
             }
         );
