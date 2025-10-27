@@ -265,7 +265,6 @@ export class EcsEc2Stack extends Stack {
                 JWT_EXPIRE: Secret.fromSecretsManager(secret, "JWT_EXPIRE"),
                 MONGODB_URI: Secret.fromSecretsManager(secret, "MONGODB_URI"),
                 PORT: Secret.fromSecretsManager(secret, "PORT"),
-                PROGRAMS_CACHE: Secret.fromSecretsManager(secret, "PROGRAMS_CACHE"),
                 ESCALATION_DEADLINE_DAYS_TRIGGER: Secret.fromSecretsManager(
                     secret,
                     "ESCALATION_DEADLINE_DAYS_TRIGGER"

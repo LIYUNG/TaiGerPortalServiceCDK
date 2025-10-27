@@ -169,7 +169,6 @@ export class EcsFargateStack extends Stack {
                         JWT_EXPIRE: ecs.Secret.fromSecretsManager(secret, "JWT_EXPIRE"),
                         MONGODB_URI: ecs.Secret.fromSecretsManager(secret, "MONGODB_URI"),
                         PORT: ecs.Secret.fromSecretsManager(secret, "PORT"),
-                        PROGRAMS_CACHE: ecs.Secret.fromSecretsManager(secret, "PROGRAMS_CACHE"),
                         ESCALATION_DEADLINE_DAYS_TRIGGER: ecs.Secret.fromSecretsManager(
                             secret,
                             "ESCALATION_DEADLINE_DAYS_TRIGGER"
