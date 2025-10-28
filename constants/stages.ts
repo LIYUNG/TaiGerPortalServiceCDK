@@ -49,7 +49,7 @@ export const STAGES: StageConfig[] = [
             aws_ec2.InstanceSize.MICRO
         ),
         ecsEc2Capacity: {
-            min: 1,
+            min: 2,
             max: 3
         },
         ecsTaskCapacity: {
