@@ -50,11 +50,11 @@ export const STAGES: StageConfig[] = [
         ),
         ecsEc2Capacity: {
             min: 1,
-            max: 2
+            max: 3
         },
         ecsTaskCapacity: {
-            min: 1,
-            max: 2
+            min: 2,
+            max: 3
         }
     },
     {
