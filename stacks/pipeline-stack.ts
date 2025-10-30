@@ -131,7 +131,21 @@ export class TaiGerPortalServicePipelineStack extends Stack {
             pipelineName: `${APP_NAME_TAIGER_SERVICE}Pipeline`,
             pipelineType: PipelineType.V2,
             crossRegionReplicationBuckets: {
-                "us-west-2": new Bucket(
+                [Region.IAD]: new Bucket(
+                    this,
+                    `${GITHUB_REPO}-ReplicationArtifactBucket-${Region.IAD}`,
+                    {
+                        bucketName: `${GITHUB_REPO}-pipeline-bucket-${Region.IAD}`.toLowerCase(),
+                        removalPolicy: RemovalPolicy.DESTROY,
+                        autoDeleteObjects: true,
+                        versioned: false,
+                        enforceSSL: true,
+                        encryption: BucketEncryption.S3_MANAGED,
+                        blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+                        lifecycleRules: [{ expiration: Duration.days(30) }]
+                    }
+                ),
+                [Region.NRT]: new Bucket(
                     this,
                     `${GITHUB_REPO}-ReplicationArtifactBucket-${Region.NRT}`,
                     {
@@ -146,20 +160,6 @@ export class TaiGerPortalServicePipelineStack extends Stack {
                     }
                 )
             },
-            artifactBucket: new Bucket(this, `${APP_NAME_TAIGER_SERVICE}-ArtifactBucket`, {
-                bucketName: `${GITHUB_TAIGER_PORTAL_REPO}-pipeline-artifact-bucket`.toLowerCase(),
-                removalPolicy: RemovalPolicy.DESTROY,
-                autoDeleteObjects: true,
-                versioned: false,
-                encryption: BucketEncryption.S3_MANAGED,
-                blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-                enforceSSL: true,
-                lifecycleRules: [
-                    {
-                        expiration: Duration.days(30)
-                    }
-                ]
-            }),
             synth: pipelineSourceBuildStep,
             codeBuildDefaults: {
                 rolePolicy: [
