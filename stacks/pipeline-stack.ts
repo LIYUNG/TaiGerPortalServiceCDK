@@ -1,4 +1,4 @@
-import { CfnOutput, SecretValue, Stack, StackProps } from "aws-cdk-lib";
+import { CfnOutput, Duration, RemovalPolicy, SecretValue, Stack, StackProps } from "aws-cdk-lib";
 import {
     CodePipeline,
     CodePipelineSource,
@@ -24,6 +24,7 @@ import { PipelineAppStage } from "../lib/app-stage";
 import { Region, STAGES } from "../constants";
 import { LinuxBuildImage } from "aws-cdk-lib/aws-codebuild";
 import { CfnReplicationConfiguration, Repository, TagMutability } from "aws-cdk-lib/aws-ecr";
+import { BlockPublicAccess, Bucket, BucketEncryption } from "aws-cdk-lib/aws-s3";
 
 export class TaiGerPortalServicePipelineStack extends Stack {
     constructor(scope: Construct, id: string, props?: StackProps) {
@@ -129,6 +130,20 @@ export class TaiGerPortalServicePipelineStack extends Stack {
         const pipeline = new CodePipeline(this, `${APP_NAME_TAIGER_SERVICE}Pipeline`, {
             pipelineName: `${APP_NAME_TAIGER_SERVICE}Pipeline`,
             pipelineType: PipelineType.V2,
+            artifactBucket: new Bucket(this, `${APP_NAME_TAIGER_SERVICE}-ArtifactBucket`, {
+                bucketName: `${GITHUB_TAIGER_PORTAL_REPO}-pipeline-artifact-bucket`.toLowerCase(),
+                removalPolicy: RemovalPolicy.DESTROY,
+                autoDeleteObjects: true,
+                versioned: false,
+                encryption: BucketEncryption.S3_MANAGED,
+                blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+                enforceSSL: true,
+                lifecycleRules: [
+                    {
+                        expiration: Duration.days(30)
+                    }
+                ]
+            }),
             synth: pipelineSourceBuildStep,
             codeBuildDefaults: {
                 rolePolicy: [
