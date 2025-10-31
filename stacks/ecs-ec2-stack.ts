@@ -401,6 +401,7 @@ export class EcsEc2Stack extends Stack {
             {
                 vpc,
                 internetFacing: true,
+                dropInvalidHeaderFields: true,
                 loadBalancerName: `${APPLICATION_NAME}-alb-${props.stageName}`,
                 securityGroup: albSecurityGroup,
                 deletionProtection: true // ELB.6 compliance - enable deletion protection for production
