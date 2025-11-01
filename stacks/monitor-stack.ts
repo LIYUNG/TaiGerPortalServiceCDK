@@ -78,9 +78,9 @@ export class MonitorStack extends cdk.Stack {
                     period: Duration.minutes(5),
                     statistic: "Sum"
                 }),
-                threshold: 1,
+                threshold: 2,
                 evaluationPeriods: 1,
-                datapointsToAlarm: 1,
+                datapointsToAlarm: 2,
                 alarmDescription: `${APPLICATION_NAME} API Gateway 5XX errors alarm for ${props.stageName} stage`,
                 comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
                 treatMissingData: TreatMissingData.NOT_BREACHING,
