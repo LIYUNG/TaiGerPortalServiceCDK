@@ -25,6 +25,7 @@ import { Region, STAGES } from "../constants";
 import { LinuxBuildImage } from "aws-cdk-lib/aws-codebuild";
 import { CfnReplicationConfiguration, Repository, TagMutability } from "aws-cdk-lib/aws-ecr";
 import { BlockPublicAccess, Bucket, BucketEncryption } from "aws-cdk-lib/aws-s3";
+import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 
 export class TaiGerPortalServicePipelineStack extends Stack {
     constructor(scope: Construct, id: string, props?: StackProps) {
@@ -146,6 +147,19 @@ export class TaiGerPortalServicePipelineStack extends Stack {
             }),
             synth: pipelineSourceBuildStep,
             codeBuildDefaults: {
+                logging: {
+                    cloudWatch: {
+                        logGroup: new LogGroup(
+                            this,
+                            `${GITHUB_TAIGER_PORTAL_REPO}Pipeline-LogGroup`,
+                            {
+                                logGroupName: `/aws/codepipeline/${GITHUB_TAIGER_PORTAL_REPO}Pipeline`,
+                                retention: RetentionDays.THREE_MONTHS,
+                                removalPolicy: RemovalPolicy.DESTROY
+                            }
+                        )
+                    }
+                },
                 rolePolicy: [
                     new PolicyStatement({
                         actions: [
