@@ -356,11 +356,29 @@ export class EcsEc2Stack extends Stack {
             scaleOutCooldown: Duration.seconds(60)
         });
 
+        scaling.scaleOnSchedule(`ScaleDownOvernight-${props.stageName}`, {
+            schedule: cdk.aws_autoscaling.Schedule.cron({
+                minute: "0",
+                hour: "21"
+            }),
+            minCapacity: 1,
+            maxCapacity: 1
+        });
+
+        scaling.scaleOnSchedule(`RestoreMorningCapacity-${props.stageName}`, {
+            schedule: cdk.aws_autoscaling.Schedule.cron({
+                minute: "0",
+                hour: "4"
+            }),
+            minCapacity: props.ecsTaskCapacity.min,
+            maxCapacity: props.ecsTaskCapacity.max
+        });
+
         asg.scaleOnCpuUtilization(`${APPLICATION_NAME}-EcsEc2AutoScalingGroup-${props.stageName}`, {
             targetUtilizationPercent: 60
         });
 
-        asg.scaleOnSchedule("ScaleDownOvernight", {
+        asg.scaleOnSchedule(`ScaleDownOvernight-${props.stageName}`, {
             schedule: cdk.aws_autoscaling.Schedule.cron({
                 minute: "0",
                 hour: "21"
@@ -371,7 +389,7 @@ export class EcsEc2Stack extends Stack {
             timeZone: "UTC"
         });
 
-        asg.scaleOnSchedule("RestoreMorningCapacity", {
+        asg.scaleOnSchedule(`RestoreMorningCapacity-${props.stageName}`, {
             schedule: cdk.aws_autoscaling.Schedule.cron({
                 minute: "0",
                 hour: "4"
