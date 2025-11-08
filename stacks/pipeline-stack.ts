@@ -95,6 +95,15 @@ export class TaiGerPortalServicePipelineStack extends Stack {
         const prebuild = new CodeBuildStep("Prebuild", {
             input: sourceCode,
             primaryOutputDirectory: ".",
+            logging: {
+                cloudWatch: {
+                    logGroup: new LogGroup(this, `${APP_NAME_TAIGER_SERVICE}Prebuild-LogGroup`, {
+                        logGroupName: `/aws/codepipeline/prebuild/${APP_NAME_TAIGER_SERVICE}`,
+                        retention: RetentionDays.THREE_MONTHS,
+                        removalPolicy: RemovalPolicy.DESTROY
+                    })
+                }
+            },
             commands: [
                 `aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO_URI`, // Log in to ECR
                 `docker build --platform linux/arm64 -t ${ecrRepo.repositoryUri}:${imageTag} .`, // Build the Docker image
@@ -119,6 +128,15 @@ export class TaiGerPortalServicePipelineStack extends Stack {
             input: sourceInfra,
             additionalInputs: {
                 "../dist": prebuild
+            },
+            logging: {
+                cloudWatch: {
+                    logGroup: new LogGroup(this, `${APP_NAME_TAIGER_SERVICE}Synth-LogGroup`, {
+                        logGroupName: `/aws/codepipeline/synth/${APP_NAME_TAIGER_SERVICE}`,
+                        retention: RetentionDays.THREE_MONTHS,
+                        removalPolicy: RemovalPolicy.DESTROY
+                    })
+                }
             },
             commands: [
                 "npm ci",
