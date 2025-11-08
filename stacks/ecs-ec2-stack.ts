@@ -14,6 +14,7 @@ import {
 import { Certificate, CertificateValidation } from "aws-cdk-lib/aws-certificatemanager";
 import { ARecord, HostedZone, RecordTarget } from "aws-cdk-lib/aws-route53";
 import { ApiGatewayDomain, LoadBalancerTarget } from "aws-cdk-lib/aws-route53-targets";
+import { TimeZone } from "aws-cdk-lib/core";
 import { APPLICATION_NAME, DOMAIN_NAME, ECR_REPO_NAME } from "../configuration";
 import {
     ContainerImage,
@@ -357,21 +358,23 @@ export class EcsEc2Stack extends Stack {
         });
 
         scaling.scaleOnSchedule(`ScaleDownOvernight-${props.stageName}`, {
-            schedule: cdk.aws_autoscaling.Schedule.cron({
+            schedule: cdk.aws_applicationautoscaling.Schedule.cron({
                 minute: "0",
                 hour: "21"
             }),
             minCapacity: 1,
-            maxCapacity: 1
+            maxCapacity: 1,
+            timeZone: TimeZone.ETC_UTC
         });
 
         scaling.scaleOnSchedule(`RestoreMorningCapacity-${props.stageName}`, {
-            schedule: cdk.aws_autoscaling.Schedule.cron({
+            schedule: cdk.aws_applicationautoscaling.Schedule.cron({
                 minute: "0",
                 hour: "4"
             }),
             minCapacity: props.ecsTaskCapacity.min,
-            maxCapacity: props.ecsTaskCapacity.max
+            maxCapacity: props.ecsTaskCapacity.max,
+            timeZone: TimeZone.ETC_UTC
         });
 
         asg.scaleOnCpuUtilization(`${APPLICATION_NAME}-EcsEc2AutoScalingGroup-${props.stageName}`, {
