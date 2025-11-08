@@ -360,6 +360,28 @@ export class EcsEc2Stack extends Stack {
             targetUtilizationPercent: 60
         });
 
+        asg.scaleOnSchedule("ScaleDownOvernight", {
+            schedule: cdk.aws_autoscaling.Schedule.cron({
+                minute: "0",
+                hour: "21"
+            }),
+            minCapacity: 1,
+            maxCapacity: 1,
+            desiredCapacity: 1,
+            timeZone: "UTC"
+        });
+
+        asg.scaleOnSchedule("RestoreMorningCapacity", {
+            schedule: cdk.aws_autoscaling.Schedule.cron({
+                minute: "0",
+                hour: "4"
+            }),
+            minCapacity: props.ecsEc2Capacity.min,
+            maxCapacity: props.ecsEc2Capacity.max,
+            desiredCapacity: props.ecsEc2Capacity.min,
+            timeZone: "UTC"
+        });
+
         const hostedZone = HostedZone.fromLookup(
             this,
             `${APPLICATION_NAME}-HostedZone-${props.stageName}`,
