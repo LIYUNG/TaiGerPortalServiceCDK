@@ -360,7 +360,7 @@ export class EcsEc2Stack extends Stack {
         scaling.scaleOnSchedule(`ScaleDownOvernight-${props.stageName}`, {
             schedule: cdk.aws_applicationautoscaling.Schedule.cron({
                 minute: "0",
-                hour: "21"
+                hour: "23"
             }),
             minCapacity: 1,
             maxCapacity: 1,
@@ -370,7 +370,7 @@ export class EcsEc2Stack extends Stack {
         scaling.scaleOnSchedule(`RestoreMorningCapacity-${props.stageName}`, {
             schedule: cdk.aws_applicationautoscaling.Schedule.cron({
                 minute: "0",
-                hour: "4"
+                hour: "6"
             }),
             minCapacity: props.ecsTaskCapacity.min,
             maxCapacity: props.ecsTaskCapacity.max,

@@ -92,13 +92,33 @@ export class TaiGerPortalServicePipelineStack extends Stack {
         const imageTag = "latest";
 
         // run docker comment.
-        const prebuild = new CodeBuildStep("Prebuild", {
+        const unitTest = new CodeBuildStep("UnitTest", {
             input: sourceCode,
             primaryOutputDirectory: ".",
             logging: {
                 cloudWatch: {
                     logGroup: new LogGroup(this, `${APP_NAME_TAIGER_SERVICE}Prebuild-LogGroup`, {
-                        logGroupName: `/aws/codepipeline/prebuild/${APP_NAME_TAIGER_SERVICE}`,
+                        logGroupName: `/aws/codepipeline/unit-test/${APP_NAME_TAIGER_SERVICE}`,
+                        retention: RetentionDays.THREE_MONTHS,
+                        removalPolicy: RemovalPolicy.DESTROY
+                    })
+                }
+            },
+            // commands: ["npm ci", "npm run test:ci", "rm rf node_modules"],
+            commands: ["echo 'Unit Test'"],
+            buildEnvironment: {
+                buildImage: LinuxBuildImage.AMAZON_LINUX_2_ARM_3 // make sure it matches the requested image platform.
+            }
+        });
+
+        // run docker comment.
+        const prebuild = new CodeBuildStep("DockerBuild", {
+            input: unitTest,
+            primaryOutputDirectory: ".",
+            logging: {
+                cloudWatch: {
+                    logGroup: new LogGroup(this, `${APP_NAME_TAIGER_SERVICE}DockerBuild-LogGroup`, {
+                        logGroupName: `/aws/codepipeline/docker-build/${APP_NAME_TAIGER_SERVICE}`,
                         retention: RetentionDays.THREE_MONTHS,
                         removalPolicy: RemovalPolicy.DESTROY
                     })
