@@ -87,6 +87,44 @@ export class EcsEc2Stack extends Stack {
             }
         );
 
+        // Add VPC endpoints for Systems Manager (EC2.57 compliance)
+        vpc.addInterfaceEndpoint(`${APPLICATION_NAME}-SSMEndpoint-${props.stageName}`, {
+            service: cdk.aws_ec2.InterfaceVpcEndpointAwsService.SSM,
+            subnets: {
+                subnetType: cdk.aws_ec2.SubnetType.PUBLIC
+            }
+        });
+
+        vpc.addInterfaceEndpoint(`${APPLICATION_NAME}-SSMMessagesEndpoint-${props.stageName}`, {
+            service: cdk.aws_ec2.InterfaceVpcEndpointAwsService.SSM_MESSAGES,
+            subnets: {
+                subnetType: cdk.aws_ec2.SubnetType.PUBLIC
+            }
+        });
+
+        vpc.addInterfaceEndpoint(`${APPLICATION_NAME}-EC2MessagesEndpoint-${props.stageName}`, {
+            service: cdk.aws_ec2.InterfaceVpcEndpointAwsService.EC2_MESSAGES,
+            subnets: {
+                subnetType: cdk.aws_ec2.SubnetType.PUBLIC
+            }
+        });
+
+        // Add VPC endpoints for Docker Registry/ECR (EC2.55 and EC2.56 compliance)
+        vpc.addInterfaceEndpoint(`${APPLICATION_NAME}-ECRDockerEndpoint-${props.stageName}`, {
+            service: cdk.aws_ec2.InterfaceVpcEndpointAwsService.ECR_DOCKER,
+            subnets: {
+                subnetType: cdk.aws_ec2.SubnetType.PUBLIC
+            }
+        });
+
+        // ECR API endpoint (EC2.55 compliance)
+        vpc.addInterfaceEndpoint(`${APPLICATION_NAME}-ECRAPIEndpoint-${props.stageName}`, {
+            service: cdk.aws_ec2.InterfaceVpcEndpointAwsService.ECR,
+            subnets: {
+                subnetType: cdk.aws_ec2.SubnetType.PUBLIC
+            }
+        });
+
         const cloudFrontPrefixList = cdk.aws_ec2.PrefixList.fromLookup(
             this,
             "CloudFrontOriginFacing",
