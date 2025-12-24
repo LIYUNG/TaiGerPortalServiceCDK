@@ -359,7 +359,10 @@ export class EcsEc2Stack extends Stack {
                 POSTGRES_URI: Secret.fromSecretsManager(secret, "POSTGRES_URI"),
                 GOOGLE_CLIENT_ID: Secret.fromSecretsManager(secret, "GOOGLE_CLIENT_ID"),
                 GOOGLE_CLIENT_SECRET: Secret.fromSecretsManager(secret, "GOOGLE_CLIENT_SECRET"),
-                GOOGLE_REDIRECT_URL: Secret.fromSecretsManager(secret, "GOOGLE_REDIRECT_URL")
+                GOOGLE_REDIRECT_URL: Secret.fromSecretsManager(secret, "GOOGLE_REDIRECT_URL"),
+                FIREFLIES_API_URL: Secret.fromSecretsManager(secret, "FIREFLIES_API_URL"),
+                FIREFLIES_API_TOKEN: Secret.fromSecretsManager(secret, "FIREFLIES_API_TOKEN"),
+                FIREFLIES_GOOGLE_INVITE_N8N_URL: Secret.fromSecretsManager(secret, "FIREFLIES_GOOGLE_INVITE_N8N_URL")
             }
         });
 
