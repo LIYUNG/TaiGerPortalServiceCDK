@@ -362,7 +362,15 @@ export class EcsEc2Stack extends Stack {
                 GOOGLE_REDIRECT_URL: Secret.fromSecretsManager(secret, "GOOGLE_REDIRECT_URL"),
                 FIREFLIES_API_URL: Secret.fromSecretsManager(secret, "FIREFLIES_API_URL"),
                 FIREFLIES_API_TOKEN: Secret.fromSecretsManager(secret, "FIREFLIES_API_TOKEN"),
-                FIREFLIES_GOOGLE_INVITE_N8N_URL: Secret.fromSecretsManager(secret, "FIREFLIES_GOOGLE_INVITE_N8N_URL")
+                FIREFLIES_GOOGLE_INVITE_N8N_URL: Secret.fromSecretsManager(
+                    secret,
+                    "FIREFLIES_GOOGLE_INVITE_N8N_URL"
+                ),
+                SLACK_BOT_TOKEN: Secret.fromSecretsManager(secret, "SLACK_BOT_TOKEN"),
+                SLACK_TAIGER_WIN_CHANNEL_ID: Secret.fromSecretsManager(
+                    secret,
+                    "SLACK_TAIGER_WIN_CHANNEL_ID"
+                )
             }
         });
 
