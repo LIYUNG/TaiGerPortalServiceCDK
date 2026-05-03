@@ -66,15 +66,6 @@ export class DbStack extends cdk.Stack {
 
         const dbPassword = passwordSecret.secretValueFromJson("password");
 
-        // Store the complete secret (used for app connection)
-        this.dbSecret = new aws_secretsmanager.Secret(
-            this,
-            `${APPLICATION_NAME}-db-secret-${props.stageName}`,
-            {
-                removalPolicy: cdk.RemovalPolicy.DESTROY
-            }
-        );
-
         // Create RDS PostgreSQL instance (cheapest option)
         this.database = new aws_rds.DatabaseInstance(
             this,
@@ -84,11 +75,11 @@ export class DbStack extends cdk.Stack {
                     version: aws_rds.PostgresEngineVersion.VER_17
                 }),
                 instanceType: aws_ec2.InstanceType.of(
-                    aws_ec2.InstanceClass.BURSTABLE3,
+                    aws_ec2.InstanceClass.BURSTABLE4_GRAVITON,
                     aws_ec2.InstanceSize.MICRO // t3.micro - cheapest
                 ),
                 allocatedStorage: 20, // Minimum 20 GB
-                storageType: aws_rds.StorageType.GP2,
+                storageType: aws_rds.StorageType.GP3,
                 credentials: aws_rds.Credentials.fromPassword("postgres", dbPassword),
                 databaseName: "taigerdb",
                 vpc: props.vpc,
@@ -108,8 +99,8 @@ export class DbStack extends cdk.Stack {
             }
         );
 
-        // Store the complete connection secret
-        new aws_secretsmanager.Secret(
+        // Store the complete secret (used for app connection)
+        this.dbSecret = new aws_secretsmanager.Secret(
             this,
             `${APPLICATION_NAME}-db-connection-secret-${props.stageName}`,
             {
