@@ -81,7 +81,7 @@ export class DbStack extends cdk.Stack {
             `${APPLICATION_NAME}-postgres-${props.stageName}`,
             {
                 engine: aws_rds.DatabaseInstanceEngine.postgres({
-                    version: aws_rds.PostgresEngineVersion.VER_15_3
+                    version: aws_rds.PostgresEngineVersion.VER_17
                 }),
                 instanceType: aws_ec2.InstanceType.of(
                     aws_ec2.InstanceClass.BURSTABLE3,
