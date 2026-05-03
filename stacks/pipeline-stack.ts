@@ -22,7 +22,7 @@ import {
 } from "../configuration/dependencies";
 import { PipelineAppStage } from "../lib/app-stage";
 import { Region, STAGES } from "../constants";
-import { LinuxBuildImage } from "aws-cdk-lib/aws-codebuild";
+import { BuildSpec, Cache, LinuxBuildImage, LocalCacheMode } from "aws-cdk-lib/aws-codebuild";
 import { CfnReplicationConfiguration, Repository, TagMutability } from "aws-cdk-lib/aws-ecr";
 import { BlockPublicAccess, Bucket, BucketEncryption } from "aws-cdk-lib/aws-s3";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
@@ -90,6 +90,11 @@ export class TaiGerPortalServicePipelineStack extends Stack {
         });
 
         const imageTag = "latest";
+        const npmCacheBuildSpec = BuildSpec.fromObject({
+            cache: {
+                paths: ["/root/.npm/**/*"]
+            }
+        });
 
         // run docker comment.
         const unitTest = new CodeBuildStep("UnitTest", {
@@ -115,6 +120,7 @@ export class TaiGerPortalServicePipelineStack extends Stack {
         const prebuild = new CodeBuildStep("DockerBuild", {
             input: unitTest,
             primaryOutputDirectory: ".",
+            cache: Cache.local(LocalCacheMode.DOCKER_LAYER),
             logging: {
                 cloudWatch: {
                     logGroup: new LogGroup(this, `${APP_NAME_TAIGER_SERVICE}DockerBuild-LogGroup`, {
@@ -137,6 +143,9 @@ export class TaiGerPortalServicePipelineStack extends Stack {
                     AWS_DEFAULT_REGION: {
                         value: `${Region.IAD}`
                     },
+                    DOCKER_BUILDKIT: {
+                        value: "1"
+                    },
                     ECR_REPO_URI: {
                         value: `${ecrRepo.repositoryUri}`
                     }
@@ -149,6 +158,8 @@ export class TaiGerPortalServicePipelineStack extends Stack {
             additionalInputs: {
                 "../dist": prebuild
             },
+            cache: Cache.local(LocalCacheMode.CUSTOM),
+            partialBuildSpec: npmCacheBuildSpec,
             logging: {
                 cloudWatch: {
                     logGroup: new LogGroup(this, `${APP_NAME_TAIGER_SERVICE}Synth-LogGroup`, {
@@ -159,7 +170,7 @@ export class TaiGerPortalServicePipelineStack extends Stack {
                 }
             },
             commands: [
-                "npm ci",
+                "npm ci --prefer-offline --no-audit",
                 "npm run build",
                 "npx cdk synth -c imageDigest=$(cat ../dist/digest.txt)"
             ]

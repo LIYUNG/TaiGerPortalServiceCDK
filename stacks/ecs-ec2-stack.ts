@@ -49,6 +49,7 @@ interface EcsEc2StackProps extends StackProps {
         max: number;
     };
     isProd: boolean;
+    vpc: cdk.aws_ec2.Vpc;
 }
 
 export class EcsEc2Stack extends Stack {
@@ -76,16 +77,8 @@ export class EcsEc2Stack extends Stack {
             }
         );
 
-        // Create a cluster
-        const vpc = new cdk.aws_ec2.Vpc(
-            this,
-            `${APPLICATION_NAME}-ecs-ec2-Vpc-${props.stageName}`,
-            {
-                natGateways: 0,
-                maxAzs: 3,
-                subnetConfiguration: [{ name: "Public", subnetType: cdk.aws_ec2.SubnetType.PUBLIC }]
-            }
-        );
+        // Use the provided VPC (shared with DbStack)
+        const vpc = props.vpc;
 
         // // Add VPC endpoints for Systems Manager (EC2.57 compliance)
         // vpc.addInterfaceEndpoint(`${APPLICATION_NAME}-SSMEndpoint-${props.stageName}`, {
