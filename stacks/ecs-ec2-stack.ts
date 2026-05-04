@@ -121,7 +121,12 @@ export class EcsEc2Stack extends Stack {
 
         const region = props.env?.region as Region;
         const cloudFrontPrefixLists = this.node.tryGetContext("cloudFrontPrefixLists");
-        const cloudFrontPrefixListId = cloudFrontPrefixLists?.[region];
+        if (!cloudFrontPrefixLists) {
+            throw new Error(
+                "cloudFrontPrefixLists context is required. Please ensure it's in cdk.json"
+            );
+        }
+        const cloudFrontPrefixListId = cloudFrontPrefixLists[region];
         if (!cloudFrontPrefixListId) {
             throw new Error(
                 `Missing CloudFront origin-facing prefix list id for region: ${region}`
@@ -449,6 +454,11 @@ export class EcsEc2Stack extends Stack {
         });
 
         const hostedZoneId = this.node.tryGetContext("hostedZoneId");
+        if (!hostedZoneId) {
+            throw new Error(
+                "hostedZoneId context is required. Please ensure it's passed in cdk.json or via -c flag"
+            );
+        }
         const hostedZone = HostedZone.fromHostedZoneAttributes(
             this,
             `${APPLICATION_NAME}-HostedZone-${props.stageName}`,
