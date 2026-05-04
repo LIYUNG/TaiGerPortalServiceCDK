@@ -34,6 +34,7 @@ import { ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { ApplicationProtocol, SslPolicy } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { SpotRequestType } from "aws-cdk-lib/aws-ec2";
 import { InstanceType } from "aws-cdk-lib/aws-ec2";
+import { Region } from "../constants";
 
 interface EcsEc2StackProps extends StackProps {
     stageName: string;
@@ -118,20 +119,22 @@ export class EcsEc2Stack extends Stack {
         //     }
         // });
 
-        const cloudFrontPrefixList = cdk.aws_ec2.PrefixList.fromLookup(
-            this,
-            "CloudFrontOriginFacing",
-            {
-                prefixListName: "com.amazonaws.global.cloudfront.origin-facing"
-            }
-        );
+        const region = props.env?.region as Region;
+        const cloudFrontPrefixLists = this.node.tryGetContext("cloudFrontPrefixLists");
+        const cloudFrontPrefixListId = cloudFrontPrefixLists?.[region];
+        if (!cloudFrontPrefixListId) {
+            throw new Error(
+                `Missing CloudFront origin-facing prefix list id for region: ${region}`
+            );
+        }
+
         const albSecurityGroup = new cdk.aws_ec2.SecurityGroup(this, `${APPLICATION_NAME}-ALB-SG`, {
             vpc,
             description: `${APPLICATION_NAME} ALB Security Group`
         });
 
         albSecurityGroup.addIngressRule(
-            cdk.aws_ec2.Peer.prefixList(cloudFrontPrefixList.prefixListId),
+            cdk.aws_ec2.Peer.prefixList(cloudFrontPrefixListId),
             cdk.aws_ec2.Port.tcp(443),
             "Allow HTTPS from public"
         );
@@ -194,7 +197,7 @@ export class EcsEc2Stack extends Stack {
                 machineImage: cdk.aws_ecs.EcsOptimizedImage.amazonLinux2023(
                     cdk.aws_ecs.AmiHardwareType.ARM,
                     {
-                        cachedInContext: true
+                        cachedInContext: false
                     }
                 ),
                 blockDevices: [
@@ -445,11 +448,13 @@ export class EcsEc2Stack extends Stack {
             timeZone: "UTC"
         });
 
-        const hostedZone = HostedZone.fromLookup(
+        const hostedZoneId = this.node.tryGetContext("hostedZoneId");
+        const hostedZone = HostedZone.fromHostedZoneAttributes(
             this,
             `${APPLICATION_NAME}-HostedZone-${props.stageName}`,
             {
-                domainName: DOMAIN_NAME // Replace with your domain name
+                hostedZoneId,
+                zoneName: DOMAIN_NAME
             }
         );
 
