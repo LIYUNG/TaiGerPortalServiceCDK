@@ -172,7 +172,7 @@ export class TaiGerPortalServicePipelineStack extends Stack {
             commands: [
                 "npm ci --prefer-offline --no-audit",
                 "npm run build",
-                "npx cdk synth -c imageDigest=$(cat ../dist/digest.txt)"
+                "npx cdk synth -c imageDigest=$(cat ../dist/digest.txt) -c hostedZoneId=Z08841911XEWSGPCLIELI"
             ]
         });
 
