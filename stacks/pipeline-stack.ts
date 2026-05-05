@@ -169,11 +169,7 @@ export class TaiGerPortalServicePipelineStack extends Stack {
                     })
                 }
             },
-            commands: [
-                "npm ci --prefer-offline --no-audit",
-                "npm run build",
-                'npx cdk synth -c imageDigest=$(cat ../dist/digest.txt) -c hostedZoneId=Z08841911XEWSGPCLIELI -c cloudFrontPrefixLists=\'{"us-east-1":"pl-3b927c52","us-west-2":"pl-82a045eb"}\''
-            ]
+            commands: ["npm ci --prefer-offline --no-audit", "npm run build", "npx cdk synth"]
         });
 
         // Create the high-level CodePipeline
