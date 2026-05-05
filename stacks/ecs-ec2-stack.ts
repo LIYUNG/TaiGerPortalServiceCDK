@@ -554,7 +554,7 @@ export class EcsEc2Stack extends Stack {
             }
         );
 
-        // RestApi with cloudWatchRole: true will automatically manage the account-level CfnAccount
+        // RestApi access logging uses the existing API Gateway account-level settings.
         this.api = new RestApi(this, `${APPLICATION_NAME}-EcsEc2APIG-${props.stageName}`, {
             restApiName: `${APPLICATION_NAME}-api-${props.stageName}`,
             defaultCorsPreflightOptions: {
@@ -603,8 +603,7 @@ export class EcsEc2Stack extends Stack {
             minCompressionSize: Size.kibibytes(0),
             binaryMediaTypes: ["*/*"],
             disableExecuteApiEndpoint: true,
-            endpointConfiguration: { types: [EndpointType.REGIONAL] },
-            cloudWatchRole: true
+            endpointConfiguration: { types: [EndpointType.REGIONAL] }
         });
 
         // Define IAM authorization for the API Gateway method
