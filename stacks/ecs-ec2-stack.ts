@@ -8,7 +8,8 @@ import {
     LogGroupLogDestination,
     RestApi,
     AccessLogFormat,
-    AccessLogField
+    AccessLogField,
+    CfnAccount
 } from "aws-cdk-lib/aws-apigateway";
 import { Certificate, CertificateValidation } from "aws-cdk-lib/aws-certificatemanager";
 import { ARecord, HostedZone, RecordTarget } from "aws-cdk-lib/aws-route53";
@@ -33,7 +34,6 @@ import { ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { ApplicationProtocol, SslPolicy } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { SpotRequestType } from "aws-cdk-lib/aws-ec2";
 import { InstanceType } from "aws-cdk-lib/aws-ec2";
-import { Region } from "../constants";
 
 interface EcsEc2StackProps extends StackProps {
     stageName: string;
@@ -49,7 +49,6 @@ interface EcsEc2StackProps extends StackProps {
         max: number;
     };
     isProd: boolean;
-    vpc: cdk.aws_ec2.Vpc;
 }
 
 export class EcsEc2Stack extends Stack {
@@ -77,8 +76,16 @@ export class EcsEc2Stack extends Stack {
             }
         );
 
-        // Use the provided VPC (shared with DbStack)
-        const vpc = props.vpc;
+        // Create a cluster
+        const vpc = new cdk.aws_ec2.Vpc(
+            this,
+            `${APPLICATION_NAME}-ecs-ec2-Vpc-${props.stageName}`,
+            {
+                natGateways: 0,
+                maxAzs: 3,
+                subnetConfiguration: [{ name: "Public", subnetType: cdk.aws_ec2.SubnetType.PUBLIC }]
+            }
+        );
 
         // // Add VPC endpoints for Systems Manager (EC2.57 compliance)
         // vpc.addInterfaceEndpoint(`${APPLICATION_NAME}-SSMEndpoint-${props.stageName}`, {
@@ -118,27 +125,20 @@ export class EcsEc2Stack extends Stack {
         //     }
         // });
 
-        const region = props.env?.region as Region;
-        const cloudFrontPrefixLists = this.node.tryGetContext("cloudFrontPrefixLists");
-        if (!cloudFrontPrefixLists) {
-            throw new Error(
-                "cloudFrontPrefixLists context is required. Please ensure it's in cdk.json"
-            );
-        }
-        const cloudFrontPrefixListId = cloudFrontPrefixLists[region];
-        if (!cloudFrontPrefixListId) {
-            throw new Error(
-                `Missing CloudFront origin-facing prefix list id for region: ${region}`
-            );
-        }
-
+        const cloudFrontPrefixList = cdk.aws_ec2.PrefixList.fromLookup(
+            this,
+            "CloudFrontOriginFacing",
+            {
+                prefixListName: "com.amazonaws.global.cloudfront.origin-facing"
+            }
+        );
         const albSecurityGroup = new cdk.aws_ec2.SecurityGroup(this, `${APPLICATION_NAME}-ALB-SG`, {
             vpc,
             description: `${APPLICATION_NAME} ALB Security Group`
         });
 
         albSecurityGroup.addIngressRule(
-            cdk.aws_ec2.Peer.prefixList(cloudFrontPrefixListId),
+            cdk.aws_ec2.Peer.prefixList(cloudFrontPrefixList.prefixListId),
             cdk.aws_ec2.Port.tcp(443),
             "Allow HTTPS from public"
         );
@@ -201,7 +201,7 @@ export class EcsEc2Stack extends Stack {
                 machineImage: cdk.aws_ecs.EcsOptimizedImage.amazonLinux2023(
                     cdk.aws_ecs.AmiHardwareType.ARM,
                     {
-                        cachedInContext: false
+                        cachedInContext: true
                     }
                 ),
                 blockDevices: [
@@ -362,7 +362,15 @@ export class EcsEc2Stack extends Stack {
                 GOOGLE_REDIRECT_URL: Secret.fromSecretsManager(secret, "GOOGLE_REDIRECT_URL"),
                 FIREFLIES_API_URL: Secret.fromSecretsManager(secret, "FIREFLIES_API_URL"),
                 FIREFLIES_API_TOKEN: Secret.fromSecretsManager(secret, "FIREFLIES_API_TOKEN"),
-                FIREFLIES_GOOGLE_INVITE_N8N_URL: Secret.fromSecretsManager(secret, "FIREFLIES_GOOGLE_INVITE_N8N_URL")
+                FIREFLIES_GOOGLE_INVITE_N8N_URL: Secret.fromSecretsManager(
+                    secret,
+                    "FIREFLIES_GOOGLE_INVITE_N8N_URL"
+                ),
+                SLACK_BOT_TOKEN: Secret.fromSecretsManager(secret, "SLACK_BOT_TOKEN"),
+                SLACK_TAIGER_WIN_CHANNEL_ID: Secret.fromSecretsManager(
+                    secret,
+                    "SLACK_TAIGER_WIN_CHANNEL_ID"
+                )
             }
         });
 
@@ -444,18 +452,11 @@ export class EcsEc2Stack extends Stack {
             timeZone: "UTC"
         });
 
-        const hostedZoneId = this.node.tryGetContext("hostedZoneId");
-        if (!hostedZoneId) {
-            throw new Error(
-                "hostedZoneId context is required. Please ensure it's passed in cdk.json or via -c flag"
-            );
-        }
-        const hostedZone = HostedZone.fromHostedZoneAttributes(
+        const hostedZone = HostedZone.fromLookup(
             this,
             `${APPLICATION_NAME}-HostedZone-${props.stageName}`,
             {
-                hostedZoneId,
-                zoneName: DOMAIN_NAME
+                domainName: DOMAIN_NAME // Replace with your domain name
             }
         );
 
@@ -546,7 +547,26 @@ export class EcsEc2Stack extends Stack {
             }
         );
 
-        // RestApi access logging uses the existing API Gateway account-level settings.
+        // Create a role for API Gateway to use for CloudWatch Logs
+        const apiGatewayCloudWatchRole = new Role(
+            this,
+            `ApiGatewayCloudWatchRole-${props.stageName}`,
+            {
+                roleName: `ApiGatewayCloudWatchRole-${props.stageName}`,
+                assumedBy: new ServicePrincipal("apigateway.amazonaws.com"),
+                managedPolicies: [
+                    ManagedPolicy.fromAwsManagedPolicyName(
+                        "service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+                    )
+                ]
+            }
+        );
+
+        // Set the role at account level for API Gateway
+        new CfnAccount(this, `${APPLICATION_NAME}-ApiGatewayAccount-${props.stageName}`, {
+            cloudWatchRoleArn: apiGatewayCloudWatchRole.roleArn
+        });
+
         this.api = new RestApi(this, `${APPLICATION_NAME}-EcsEc2APIG-${props.stageName}`, {
             restApiName: `${APPLICATION_NAME}-api-${props.stageName}`,
             defaultCorsPreflightOptions: {
@@ -595,7 +615,8 @@ export class EcsEc2Stack extends Stack {
             minCompressionSize: Size.kibibytes(0),
             binaryMediaTypes: ["*/*"],
             disableExecuteApiEndpoint: true,
-            endpointConfiguration: { types: [EndpointType.REGIONAL] }
+            endpointConfiguration: { types: [EndpointType.REGIONAL] },
+            cloudWatchRole: true
         });
 
         // Define IAM authorization for the API Gateway method

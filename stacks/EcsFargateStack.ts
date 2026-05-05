@@ -274,13 +274,8 @@ export class EcsFargateStack extends Stack {
             scaleOutCooldown: Duration.seconds(60)
         });
 
-        const hostedZoneId = this.node.tryGetContext("hostedZoneId");
-        if (!hostedZoneId) {
-            throw new Error("hostedZoneId context is required. Please ensure it's in cdk.json");
-        }
-        const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, `HostedZone`, {
-            hostedZoneId,
-            zoneName: DOMAIN_NAME
+        const hostedZone = route53.HostedZone.fromLookup(this, `HostedZone`, {
+            domainName: DOMAIN_NAME // Replace with your domain name
         });
 
         const certificate = new certmgr.Certificate(
