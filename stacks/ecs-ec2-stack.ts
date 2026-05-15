@@ -1,19 +1,18 @@
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
 import {
-    BasePathMapping,
-    DomainName,
-    EndpointType,
-    HttpIntegration,
-    LogGroupLogDestination,
-    RestApi,
-    AccessLogFormat,
-    AccessLogField,
-    CfnAccount
-} from "aws-cdk-lib/aws-apigateway";
+    AllowedMethods,
+    CachePolicy,
+    Distribution,
+    OriginProtocolPolicy,
+    OriginRequestPolicy,
+    SecurityPolicyProtocol,
+    ViewerProtocolPolicy
+} from "aws-cdk-lib/aws-cloudfront";
+import { HttpOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
 import { Certificate, CertificateValidation } from "aws-cdk-lib/aws-certificatemanager";
 import { ARecord, HostedZone, RecordTarget } from "aws-cdk-lib/aws-route53";
-import { ApiGatewayDomain, LoadBalancerTarget } from "aws-cdk-lib/aws-route53-targets";
+import { CloudFrontTarget, LoadBalancerTarget } from "aws-cdk-lib/aws-route53-targets";
 import { TimeZone } from "aws-cdk-lib/core";
 import { APPLICATION_NAME, DOMAIN_NAME, ECR_REPO_NAME } from "../configuration";
 import {
@@ -25,13 +24,17 @@ import {
     PlacementStrategy,
     Secret
 } from "aws-cdk-lib/aws-ecs";
-import { aws_secretsmanager, Duration, Size, Stack, StackProps } from "aws-cdk-lib";
+import { aws_secretsmanager, Duration, Stack, StackProps } from "aws-cdk-lib";
 import { EcsEc2Role } from "../constructs";
 import { Repository } from "aws-cdk-lib/aws-ecr";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { ManagedPolicy, Role } from "aws-cdk-lib/aws-iam";
 import { ServicePrincipal } from "aws-cdk-lib/aws-iam";
-import { ApplicationProtocol, SslPolicy } from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import {
+    ApplicationLoadBalancer,
+    ApplicationProtocol,
+    SslPolicy
+} from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { SpotRequestType } from "aws-cdk-lib/aws-ec2";
 import { InstanceType } from "aws-cdk-lib/aws-ec2";
 
@@ -52,9 +55,16 @@ interface EcsEc2StackProps extends StackProps {
 }
 
 export class EcsEc2Stack extends Stack {
-    readonly api: RestApi;
+    readonly loadBalancer: ApplicationLoadBalancer;
     constructor(scope: Construct, id: string, props: EcsEc2StackProps) {
         super(scope, id, props);
+
+        const cloudFrontCertificateArnByStage = this.node.tryGetContext(
+            "cloudFrontCertificateArnByStage"
+        ) as Record<string, string> | undefined;
+        const cloudFrontCertificateArn =
+            cloudFrontCertificateArnByStage?.[props.stageName] ??
+            (this.node.tryGetContext("cloudFrontCertificateArn") as string | undefined);
 
         // Define multiple parameters
         const secret = aws_secretsmanager.Secret.fromSecretCompleteArn(
@@ -137,11 +147,19 @@ export class EcsEc2Stack extends Stack {
             description: `${APPLICATION_NAME} ALB Security Group`
         });
 
-        albSecurityGroup.addIngressRule(
-            cdk.aws_ec2.Peer.prefixList(cloudFrontPrefixList.prefixListId),
-            cdk.aws_ec2.Port.tcp(443),
-            "Allow HTTPS from public"
-        );
+        if (cloudFrontCertificateArn) {
+            albSecurityGroup.addIngressRule(
+                cdk.aws_ec2.Peer.prefixList(cloudFrontPrefixList.prefixListId),
+                cdk.aws_ec2.Port.tcp(443),
+                "Allow HTTPS only from CloudFront"
+            );
+        } else {
+            albSecurityGroup.addIngressRule(
+                cdk.aws_ec2.Peer.anyIpv4(),
+                cdk.aws_ec2.Port.tcp(443),
+                "Allow HTTPS from internet when CloudFront is disabled"
+            );
+        }
 
         const ecsEc2SecurityGroup = new cdk.aws_ec2.SecurityGroup(this, `${APPLICATION_NAME}-SG`, {
             vpc,
@@ -499,6 +517,7 @@ export class EcsEc2Stack extends Stack {
                 deletionProtection: true // ELB.6 compliance - enable deletion protection for production
             }
         );
+        this.loadBalancer = alb;
 
         // Step 6: Create Route 53 Record to point to the ALB
         new ARecord(this, `${APPLICATION_NAME}-EcsEc2ALBRecord-${props.stageName}`, {
@@ -536,120 +555,9 @@ export class EcsEc2Stack extends Stack {
             }
         });
 
-        // Step 2: Create API Gateway
-        const logGroupApi = new LogGroup(
-            this,
-            `${APPLICATION_NAME}-APIGWLogGroup-${props.stageName}`,
-            {
-                logGroupName: `/ecs/apigw/${APPLICATION_NAME}-${props.stageName}`,
-                retention: cdk.aws_logs.RetentionDays.SIX_MONTHS,
-                removalPolicy: cdk.RemovalPolicy.DESTROY
-            }
-        );
-
-        // Create a role for API Gateway to use for CloudWatch Logs
-        const apiGatewayCloudWatchRole = new Role(
-            this,
-            `ApiGatewayCloudWatchRole-${props.stageName}`,
-            {
-                roleName: `ApiGatewayCloudWatchRole-${props.stageName}`,
-                assumedBy: new ServicePrincipal("apigateway.amazonaws.com"),
-                managedPolicies: [
-                    ManagedPolicy.fromAwsManagedPolicyName(
-                        "service-role/AmazonAPIGatewayPushToCloudWatchLogs"
-                    )
-                ]
-            }
-        );
-
-        // Set the role at account level for API Gateway
-        new CfnAccount(this, `${APPLICATION_NAME}-ApiGatewayAccount-${props.stageName}`, {
-            cloudWatchRoleArn: apiGatewayCloudWatchRole.roleArn
-        });
-
-        this.api = new RestApi(this, `${APPLICATION_NAME}-EcsEc2APIG-${props.stageName}`, {
-            restApiName: `${APPLICATION_NAME}-api-${props.stageName}`,
-            defaultCorsPreflightOptions: {
-                allowOrigins: [ORIGIN], // Restrict as necessary
-                allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // ✅ Keep OPTIONS
-                allowHeaders: [
-                    "Authorization",
-                    "Content-Type",
-                    "X-auth",
-                    "tenantId",
-                    "Accept-Encoding"
-                ],
-                allowCredentials: true // ✅ Required when using credentials
-            },
-            description: "This service handles requests with Ecs from TaiGer portal.",
-            deployOptions: {
-                accessLogDestination: new LogGroupLogDestination(logGroupApi),
-                accessLogFormat: AccessLogFormat.custom(
-                    JSON.stringify({
-                        accountId: AccessLogField.contextIdentityAccountId(),
-                        apiId: AccessLogField.contextApiId(),
-                        authorizeError: AccessLogField.contextAuthorizeError(),
-                        callerAccountId: AccessLogField.contextCallerAccountId(),
-                        domainName: AccessLogField.contextDomainName(),
-                        errorMessage: AccessLogField.contextErrorMessageString(),
-                        errorValidationError: AccessLogField.contextErrorValidationErrorString(),
-                        errorType: AccessLogField.contextErrorResponseType(),
-                        extendedRequestId: AccessLogField.contextExtendedRequestId(),
-                        httpMethod: AccessLogField.contextHttpMethod(),
-                        ownerAccountId: AccessLogField.contextOwnerAccountId(),
-                        path: AccessLogField.contextPath(),
-                        protocol: AccessLogField.contextProtocol(),
-                        requestTime: AccessLogField.contextRequestTime(),
-                        responseLength: AccessLogField.contextResponseLength(),
-                        responseLatency: AccessLogField.contextResponseLatency(),
-                        requestId: AccessLogField.contextRequestId(),
-                        resourcePath: AccessLogField.contextResourcePath(),
-                        sourceIp: AccessLogField.contextIdentitySourceIp(),
-                        stage: AccessLogField.contextStage(),
-                        status: AccessLogField.contextStatus(),
-                        user: AccessLogField.contextIdentityUserArn()
-                    })
-                ),
-                stageName: props.stageName // Your API stage
-            },
-            minCompressionSize: Size.kibibytes(0),
-            binaryMediaTypes: ["*/*"],
-            disableExecuteApiEndpoint: true,
-            endpointConfiguration: { types: [EndpointType.REGIONAL] },
-            cloudWatchRole: true
-        });
-
-        // Define IAM authorization for the API Gateway method
-        // const methodOptions: MethodOptions = {
-        //     authorizationType: AuthorizationType.IAM // Require SigV4 signed requests
-        // };
-
-        // Create a resource and method in API Gateway
-        const ecsProxy = this.api.root.addResource("{proxy+}");
-
-        // Create ALB integration
-        const albIntegration = new HttpIntegration(
-            `https://${albDomain}/{proxy}`, // Include `{proxy}` in backend path
-            {
-                httpMethod: "ANY",
-                proxy: true,
-                options: {
-                    requestParameters: {
-                        "integration.request.path.proxy": "method.request.path.proxy" // Map the proxy path
-                    }
-                }
-            }
-        );
-
-        ecsProxy.addMethod("ANY", albIntegration, {
-            requestParameters: {
-                "method.request.path.proxy": true // Enable path parameter
-            }
-        });
-
         const apiDomain = `api.ecs.${props.stageName}.${DOMAIN_NAME}`;
 
-        const certificate = new Certificate(
+        const apiDomainCertificate = new Certificate(
             this,
             `${APPLICATION_NAME}-EcsEc2ApiCertificate-${props.stageName}`,
             {
@@ -658,31 +566,62 @@ export class EcsEc2Stack extends Stack {
             }
         );
 
-        const domainName = new DomainName(
-            this,
-            `${APPLICATION_NAME}-EcsEc2CustomDomain-${props.stageName}`,
-            {
-                domainName: apiDomain,
-                certificate
-            }
-        );
+        listener.addCertificates(`${APPLICATION_NAME}-ApiDomainCertificate-${props.stageName}`, [
+            apiDomainCertificate
+        ]);
 
-        new BasePathMapping(this, `${APPLICATION_NAME}-EcsEc2BasePathMapping-${props.stageName}`, {
-            domainName: domainName,
-            restApi: this.api,
-            stage: this.api.deploymentStage
-        });
+        const cloudFrontDistribution = cloudFrontCertificateArn
+            ? new Distribution(this, `${APPLICATION_NAME}-ApiDistribution-${props.stageName}`, {
+                  certificate: Certificate.fromCertificateArn(
+                      this,
+                      `${APPLICATION_NAME}-CloudFrontCert-${props.stageName}`,
+                      cloudFrontCertificateArn
+                  ),
+                  domainNames: [apiDomain],
+                  minimumProtocolVersion: SecurityPolicyProtocol.TLS_V1_2_2021,
+                  defaultBehavior: {
+                      origin: new HttpOrigin(albDomain, {
+                          protocolPolicy: OriginProtocolPolicy.HTTPS_ONLY,
+                          readTimeout: Duration.seconds(60),
+                          keepaliveTimeout: Duration.seconds(60)
+                      }),
+                      viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                      allowedMethods: AllowedMethods.ALLOW_ALL,
+                      cachePolicy: CachePolicy.CACHING_DISABLED,
+                      originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+                      compress: false
+                  },
+                  additionalBehaviors: {
+                      "stream/*": {
+                          origin: new HttpOrigin(albDomain, {
+                              protocolPolicy: OriginProtocolPolicy.HTTPS_ONLY,
+                              readTimeout: Duration.seconds(60),
+                              keepaliveTimeout: Duration.seconds(60)
+                          }),
+                          viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                          allowedMethods: AllowedMethods.ALLOW_ALL,
+                          cachePolicy: CachePolicy.CACHING_DISABLED,
+                          originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+                          compress: false
+                      }
+                  }
+              })
+            : undefined;
 
-        // Step 6: Create Route 53 Record to point to the API Gateway
-        new ARecord(this, `${APPLICATION_NAME}-EcsEc2ApiGatewayRecord-${props.stageName}`, {
+        // Keep the existing API domain and point it directly at ALB.
+        new ARecord(this, `${APPLICATION_NAME}-EcsEc2ApiRecord-${props.stageName}`, {
             zone: hostedZone,
             recordName: apiDomain, // Subdomain name for your custom domain
-            target: RecordTarget.fromAlias(new ApiGatewayDomain(domainName))
+            target: RecordTarget.fromAlias(
+                cloudFrontDistribution
+                    ? new CloudFrontTarget(cloudFrontDistribution)
+                    : new LoadBalancerTarget(alb)
+            )
         });
 
         // Cost center tag
         cdk.Tags.of(service).add("Project", "Meritonai");
         cdk.Tags.of(service).add("Environment", props.stageName);
-        cdk.Tags.of(this.api).add("CostCenter", "EcsService");
+        cdk.Tags.of(alb).add("CostCenter", "EcsService");
     }
 }

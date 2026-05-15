@@ -46,7 +46,7 @@ export class PipelineAppStage extends Stage {
             `${APPLICATION_NAME}MonitorStack-${props.stageName}`,
             {
                 ...props,
-                api: this.ecsEc2Stack.api,
+                loadBalancer: this.ecsEc2Stack.loadBalancer,
                 slackWorkspaceId: props.slackWorkspaceId,
                 slackChannelId: props.slackChannelId,
                 terminationProtection: props.isProd
