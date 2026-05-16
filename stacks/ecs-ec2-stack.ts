@@ -555,7 +555,7 @@ export class EcsEc2Stack extends Stack {
             }
         });
 
-        const apiDomain = `api-v2.ecs.${props.stageName}.${DOMAIN_NAME}`;
+        const apiDomain = `api.ecs.${props.stageName}.${DOMAIN_NAME}`;
 
         const apiDomainCertificate = new Certificate(
             this,
