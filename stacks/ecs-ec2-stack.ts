@@ -1,18 +1,9 @@
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
-import {
-    AllowedMethods,
-    CachePolicy,
-    Distribution,
-    OriginProtocolPolicy,
-    OriginRequestPolicy,
-    SecurityPolicyProtocol,
-    ViewerProtocolPolicy
-} from "aws-cdk-lib/aws-cloudfront";
-import { HttpOrigin } from "aws-cdk-lib/aws-cloudfront-origins";
+
 import { Certificate, CertificateValidation } from "aws-cdk-lib/aws-certificatemanager";
 import { ARecord, HostedZone, RecordTarget } from "aws-cdk-lib/aws-route53";
-import { CloudFrontTarget, LoadBalancerTarget } from "aws-cdk-lib/aws-route53-targets";
+import { LoadBalancerTarget } from "aws-cdk-lib/aws-route53-targets";
 import { TimeZone } from "aws-cdk-lib/core";
 import { APPLICATION_NAME, DOMAIN_NAME, ECR_REPO_NAME } from "../configuration";
 import {
@@ -59,12 +50,7 @@ export class EcsEc2Stack extends Stack {
     constructor(scope: Construct, id: string, props: EcsEc2StackProps) {
         super(scope, id, props);
 
-        const cloudFrontCertificateArnByStage = this.node.tryGetContext(
-            "cloudFrontCertificateArnByStage"
-        ) as Record<string, string> | undefined;
-        const cloudFrontCertificateArn =
-            cloudFrontCertificateArnByStage?.[props.stageName] ??
-            (this.node.tryGetContext("cloudFrontCertificateArn") as string | undefined);
+        // CloudFront is now managed by frontend stack, not here
 
         // Define multiple parameters
         const secret = aws_secretsmanager.Secret.fromSecretCompleteArn(
@@ -135,31 +121,17 @@ export class EcsEc2Stack extends Stack {
         //     }
         // });
 
-        const cloudFrontPrefixList = cdk.aws_ec2.PrefixList.fromLookup(
-            this,
-            "CloudFrontOriginFacing",
-            {
-                prefixListName: "com.amazonaws.global.cloudfront.origin-facing"
-            }
-        );
         const albSecurityGroup = new cdk.aws_ec2.SecurityGroup(this, `${APPLICATION_NAME}-ALB-SG`, {
             vpc,
             description: `${APPLICATION_NAME} ALB Security Group`
         });
 
-        if (cloudFrontCertificateArn) {
-            albSecurityGroup.addIngressRule(
-                cdk.aws_ec2.Peer.prefixList(cloudFrontPrefixList.prefixListId),
-                cdk.aws_ec2.Port.tcp(443),
-                "Allow HTTPS only from CloudFront"
-            );
-        } else {
-            albSecurityGroup.addIngressRule(
-                cdk.aws_ec2.Peer.anyIpv4(),
-                cdk.aws_ec2.Port.tcp(443),
-                "Allow HTTPS from internet when CloudFront is disabled"
-            );
-        }
+        // Allow HTTPS from internet (frontend CloudFront will call this ALB)
+        albSecurityGroup.addIngressRule(
+            cdk.aws_ec2.Peer.anyIpv4(),
+            cdk.aws_ec2.Port.tcp(443),
+            "Allow HTTPS from internet"
+        );
 
         const ecsEc2SecurityGroup = new cdk.aws_ec2.SecurityGroup(this, `${APPLICATION_NAME}-SG`, {
             vpc,
@@ -570,53 +542,11 @@ export class EcsEc2Stack extends Stack {
             apiDomainCertificate
         ]);
 
-        const cloudFrontDistribution = cloudFrontCertificateArn
-            ? new Distribution(this, `${APPLICATION_NAME}-ApiDistribution-${props.stageName}`, {
-                  certificate: Certificate.fromCertificateArn(
-                      this,
-                      `${APPLICATION_NAME}-CloudFrontCert-${props.stageName}`,
-                      cloudFrontCertificateArn
-                  ),
-                  domainNames: [apiDomain],
-                  minimumProtocolVersion: SecurityPolicyProtocol.TLS_V1_2_2021,
-                  defaultBehavior: {
-                      origin: new HttpOrigin(albDomain, {
-                          protocolPolicy: OriginProtocolPolicy.HTTPS_ONLY,
-                          readTimeout: Duration.seconds(60),
-                          keepaliveTimeout: Duration.seconds(60)
-                      }),
-                      viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                      allowedMethods: AllowedMethods.ALLOW_ALL,
-                      cachePolicy: CachePolicy.CACHING_DISABLED,
-                      originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-                      compress: false
-                  },
-                  additionalBehaviors: {
-                      "stream/*": {
-                          origin: new HttpOrigin(albDomain, {
-                              protocolPolicy: OriginProtocolPolicy.HTTPS_ONLY,
-                              readTimeout: Duration.seconds(60),
-                              keepaliveTimeout: Duration.seconds(60)
-                          }),
-                          viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                          allowedMethods: AllowedMethods.ALLOW_ALL,
-                          cachePolicy: CachePolicy.CACHING_DISABLED,
-                          originRequestPolicy: OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-                          compress: false
-                      }
-                  }
-              })
-            : undefined;
-
-        // Keep the existing API domain and point it directly at ALB.
+        // Create Route53 A record for API domain pointing directly to ALB
         new ARecord(this, `${APPLICATION_NAME}-EcsEc2ApiRecord-${props.stageName}`, {
             zone: hostedZone,
-            recordName: apiDomain, // Subdomain name for your custom domain
-            target: RecordTarget.fromAlias(
-                cloudFrontDistribution
-                    ? new CloudFrontTarget(cloudFrontDistribution)
-                    : new LoadBalancerTarget(alb)
-            )
+            recordName: apiDomain,
+            target: RecordTarget.fromAlias(new LoadBalancerTarget(alb))
         });
 
         // Cost center tag
