@@ -27,7 +27,7 @@ export class MonitorStack extends cdk.Stack {
         // Create an SNS Topic for notifications
         const alarmTopic = new Topic(this, `${APPLICATION_NAME}-AlbAlarmTopic-${props.stageName}`, {
             displayName: `${APPLICATION_NAME} ALB 5XX Error Alarms for ${props.stageName} stage`,
-            topicName: `${APPLICATION_NAME}-5XX-AlarmsTopic-${props.stageName}`
+            topicName: `${APPLICATION_NAME}-5XX-AlbAlarmsTopic-${props.stageName}`
         });
 
         // Create Amazon Q Slack channel configuration
