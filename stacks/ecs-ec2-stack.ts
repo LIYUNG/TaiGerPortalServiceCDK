@@ -426,7 +426,7 @@ export class EcsEc2Stack extends Stack {
                 hour: "21"
             }),
             minCapacity: 1,
-            maxCapacity: 1,
+            maxCapacity: 2,
             desiredCapacity: 1,
             timeZone: "UTC"
         });
