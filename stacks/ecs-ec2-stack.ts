@@ -215,12 +215,13 @@ export class EcsEc2Stack extends Stack {
 
         const asg = new cdk.aws_autoscaling.AutoScalingGroup(
             this,
-            `${APPLICATION_NAME}-AutoScalingGroup-${props.stageName}`,
+            `${APPLICATION_NAME}AutoScalingGroup${props.stageName}`,
             {
                 vpc,
                 vpcSubnets: {
                     subnetType: cdk.aws_ec2.SubnetType.PUBLIC
                 },
+                autoScalingGroupName: `${APPLICATION_NAME}AutoScalingGroup${props.stageName}`,
                 launchTemplate,
                 minCapacity: props.ecsEc2Capacity.min,
                 maxCapacity: props.ecsEc2Capacity.max
@@ -239,7 +240,7 @@ export class EcsEc2Stack extends Stack {
 
         const capacityProvider = new cdk.aws_ecs.AsgCapacityProvider(
             this,
-            `${APPLICATION_NAME}-CapacityProvider-${props.stageName}`,
+            `${APPLICATION_NAME}CapacityProvider${props.stageName}`,
             {
                 autoScalingGroup: asg
             }
