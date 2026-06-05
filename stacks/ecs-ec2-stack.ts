@@ -511,6 +511,9 @@ export class EcsEc2Stack extends Stack {
 
         // Attach ALB to ECS Service
         listener.addTargets("ECS", {
+            // Keep <= 32 chars (ALB target group name limit); mirrors the ALB
+            // naming pattern so the dashboard can match it deterministically.
+            targetGroupName: `${APPLICATION_NAME}-tg-${props.stageName}`,
             protocol: ApplicationProtocol.HTTP,
             targets: [
                 service.loadBalancerTarget({
