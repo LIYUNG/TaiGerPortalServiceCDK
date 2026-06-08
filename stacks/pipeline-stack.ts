@@ -22,7 +22,7 @@ import {
 } from "../configuration/dependencies";
 import { PipelineAppStage } from "../lib/app-stage";
 import { Region, STAGES } from "../constants";
-import { BuildSpec, LinuxArmBuildImage, LinuxBuildImage } from "aws-cdk-lib/aws-codebuild";
+import { BuildSpec, LinuxArmBuildImage } from "aws-cdk-lib/aws-codebuild";
 import { CfnReplicationConfiguration, Repository, TagMutability } from "aws-cdk-lib/aws-ecr";
 import { BlockPublicAccess, Bucket, BucketEncryption } from "aws-cdk-lib/aws-s3";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
@@ -144,7 +144,13 @@ export class TaiGerPortalServicePipelineStack extends Stack {
                 `aws ecr describe-images --repository-name ${ecrRepo.repositoryName} --image-ids imageTag=${imageTag} --query 'imageDetails[0].imageDigest' --output text > digest.txt`
             ],
             buildEnvironment: {
-                buildImage: LinuxBuildImage.AMAZON_LINUX_2_ARM_3, // make sure it matches the requested image platform.
+                // Use a real ARM (Graviton) CodeBuild env. `LinuxBuildImage`
+                // produces a LINUX_CONTAINER (x86) environment even for the
+                // (deprecated) *_ARM_* members, so `docker build --platform
+                // linux/arm64` ran on an x86 host and the arm64 `RUN` steps died
+                // with "exec /bin/sh: exec format error". `LinuxArmBuildImage`
+                // selects an ARM_CONTAINER env so the arm64 image builds natively.
+                buildImage: LinuxArmBuildImage.AMAZON_LINUX_2023_STANDARD_3_0,
                 privileged: true,
                 environmentVariables: {
                     AWS_DEFAULT_REGION: {
