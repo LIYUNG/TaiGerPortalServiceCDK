@@ -104,8 +104,8 @@ export class TaiGerPortalServicePipelineStack extends Stack {
                     })
                 }
             },
-            // commands: ["npm ci", "npm run test:ci", "rm rf node_modules"],
-            commands: ["echo 'Unit Test'"],
+            commands: ["npm ci", "npm run test:ci", "rm rf node_modules"],
+            // commands: ["echo 'Unit Test'"],
             buildEnvironment: {
                 buildImage: LinuxBuildImage.AMAZON_LINUX_2_ARM_3 // make sure it matches the requested image platform.
             }
