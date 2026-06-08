@@ -158,11 +158,10 @@ export class EcsEc2Stack extends Stack {
             allowAllOutbound: true
         });
 
-        ecsEc2SecurityGroup.addIngressRule(
-            albSecurityGroup,
-            cdk.aws_ec2.Port.tcp(3000),
-            "Allow HTTP from ALB"
-        );
+        // NOTE: under awsvpc the ALB connects to the TASK ENI (see
+        // ecsTaskSecurityGroup below), not the instance ENI, so the instance SG
+        // no longer needs an ALB -> 3000 ingress rule (it was required only for
+        // the old bridge/host-port networking).
 
         // Tasks run in awsvpc network mode for ECS native blue/green canary
         // deployments (blue + green task sets must co-locate on an instance,
