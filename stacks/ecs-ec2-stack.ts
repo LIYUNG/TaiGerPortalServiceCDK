@@ -16,7 +16,6 @@ import {
     Ec2Service,
     ListenerRuleConfiguration,
     LogDriver,
-    NetworkMode,
     PlacementStrategy,
     Secret
 } from "aws-cdk-lib/aws-ecs";
@@ -158,29 +157,15 @@ export class EcsEc2Stack extends Stack {
             allowAllOutbound: true
         });
 
-        // NOTE: under awsvpc the ALB connects to the TASK ENI (see
-        // ecsTaskSecurityGroup below), not the instance ENI, so the instance SG
-        // no longer needs an ALB -> 3000 ingress rule (it was required only for
-        // the old bridge/host-port networking).
-
-        // Tasks run in awsvpc network mode for ECS native blue/green canary
-        // deployments (blue + green task sets must co-locate on an instance,
-        // which a fixed bridge host port cannot do). Each task gets its own ENI
-        // with this SG; both the prod (443) and test (9443) listeners live on
-        // the same ALB SG, so a single ingress rule covers both.
-        const ecsTaskSecurityGroup = new cdk.aws_ec2.SecurityGroup(
-            this,
-            `${APPLICATION_NAME}-TaskSG`,
-            {
-                vpc,
-                description: `${APPLICATION_NAME} ECS task (awsvpc) Security Group`,
-                allowAllOutbound: true
-            }
-        );
-        ecsTaskSecurityGroup.addIngressRule(
+        // Bridge mode + dynamic host ports: the ALB forwards to the INSTANCE on
+        // an ephemeral host port (32768-65535), not container port 3000, so the
+        // instance SG must allow the whole dynamic range from the ALB. Both the
+        // prod (443) and test (9443) listeners live on the same ALB SG, so this
+        // one rule covers blue and green traffic.
+        ecsEc2SecurityGroup.addIngressRule(
             albSecurityGroup,
-            cdk.aws_ec2.Port.tcp(3000),
-            "Allow app traffic from ALB to task ENIs"
+            cdk.aws_ec2.Port.tcpRange(32768, 65535),
+            "Allow ALB to ECS dynamic host ports (bridge mode)"
         );
 
         const ecsInstanceRole = new Role(
@@ -309,10 +294,12 @@ export class EcsEc2Stack extends Stack {
             `${APPLICATION_NAME}-EcsEc2TaskDefinition-${props.stageName}`,
             {
                 executionRole: executionRole,
-                taskRole: ecsEc2Role.role,
-                // awsvpc + IP target groups are required for ECS native
-                // blue/green canary (blue & green task sets co-locate per host).
-                networkMode: NetworkMode.AWS_VPC
+                taskRole: ecsEc2Role.role
+                // Bridge networking (the Ec2TaskDefinition default). Tasks share
+                // the instance's network namespace, so DB egress uses the
+                // instance's public IP (no NAT needed). Blue/green canary works
+                // via dynamic host ports + instance target groups (blue & green
+                // co-locate on a host on different ephemeral ports).
             }
         );
         const ORIGIN = props.isProd
@@ -321,8 +308,9 @@ export class EcsEc2Stack extends Stack {
 
         taskDefinition.addContainer("EcsEc2Container", {
             image: ContainerImage.fromEcrRepository(ecrRepoEcs, imageDigest),
-            // awsvpc mode: the task ENI exposes the container port directly
-            // (no host-port remap), so hostPort must equal containerPort.
+            // Bridge mode: omit hostPort (=> 0) so Docker assigns a dynamic
+            // ephemeral host port (32768-65535). This lets blue & green task
+            // sets co-locate on the same instance during a canary deployment.
             portMappings: [{ containerPort: 3000 }],
             memoryReservationMiB: 256,
             readonlyRootFilesystem: true,
@@ -510,7 +498,7 @@ export class EcsEc2Stack extends Stack {
             }
         );
 
-        // --- Blue/green target groups (awsvpc => IP targets) ---
+        // --- Blue/green target groups (bridge + dynamic ports => INSTANCE targets) ---
         const tgHealthCheck = {
             path: "/health",
             interval: cdk.Duration.seconds(60),
@@ -529,7 +517,7 @@ export class EcsEc2Stack extends Stack {
                 targetGroupName: `tgps-tg-blue-${props.stageName}`,
                 port: 3000,
                 protocol: ApplicationProtocol.HTTP,
-                targetType: TargetType.IP,
+                targetType: TargetType.INSTANCE,
                 deregistrationDelay: Duration.seconds(60),
                 healthCheck: tgHealthCheck
             }
@@ -543,7 +531,7 @@ export class EcsEc2Stack extends Stack {
                 targetGroupName: `tgps-tg-green-${props.stageName}`,
                 port: 3000,
                 protocol: ApplicationProtocol.HTTP,
-                targetType: TargetType.IP,
+                targetType: TargetType.INSTANCE,
                 deregistrationDelay: Duration.seconds(60),
                 healthCheck: tgHealthCheck
             }
@@ -629,8 +617,6 @@ export class EcsEc2Stack extends Stack {
                     weight: 1
                 }
             ],
-            // awsvpc task ENI SG (allows app traffic from the ALB).
-            securityGroups: [ecsTaskSecurityGroup],
             // Keep blue at full capacity while green spins up alongside it.
             minHealthyPercent: 100,
             maxHealthyPercent: 200,
