@@ -7,11 +7,16 @@ import { LoadBalancerTarget } from "aws-cdk-lib/aws-route53-targets";
 import { TimeZone } from "aws-cdk-lib/core";
 import { APPLICATION_NAME, DOMAIN_NAME, ECR_REPO_NAME } from "../configuration";
 import {
+    AlarmBehavior,
+    AlternateTarget,
     ContainerImage,
     ContainerInsights,
     DeploymentControllerType,
+    DeploymentStrategy,
     Ec2Service,
+    ListenerRuleConfiguration,
     LogDriver,
+    NetworkMode,
     PlacementStrategy,
     Secret
 } from "aws-cdk-lib/aws-ecs";
@@ -22,9 +27,13 @@ import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { ManagedPolicy, Role } from "aws-cdk-lib/aws-iam";
 import { ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import {
+    ApplicationListenerRule,
     ApplicationLoadBalancer,
     ApplicationProtocol,
-    SslPolicy
+    ApplicationTargetGroup,
+    ListenerCondition,
+    SslPolicy,
+    TargetType
 } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { SpotRequestType } from "aws-cdk-lib/aws-ec2";
 import { InstanceType } from "aws-cdk-lib/aws-ec2";
@@ -133,6 +142,16 @@ export class EcsEc2Stack extends Stack {
             "Allow HTTPS from internet"
         );
 
+        // Blue/green test listener (9443): used to validate the GREEN task set
+        // before cutover. Kept OFF the public internet — restricted to in-VPC
+        // callers only. Replace with an admin/office CIDR if validation needs
+        // to originate from outside the VPC.
+        albSecurityGroup.addIngressRule(
+            cdk.aws_ec2.Peer.ipv4(vpc.vpcCidrBlock),
+            cdk.aws_ec2.Port.tcp(9443),
+            "Allow blue/green test traffic (restricted to VPC)"
+        );
+
         const ecsEc2SecurityGroup = new cdk.aws_ec2.SecurityGroup(this, `${APPLICATION_NAME}-SG`, {
             vpc,
             description: `${APPLICATION_NAME} ECS EC2 Security Group`,
@@ -143,6 +162,26 @@ export class EcsEc2Stack extends Stack {
             albSecurityGroup,
             cdk.aws_ec2.Port.tcp(3000),
             "Allow HTTP from ALB"
+        );
+
+        // Tasks run in awsvpc network mode for ECS native blue/green canary
+        // deployments (blue + green task sets must co-locate on an instance,
+        // which a fixed bridge host port cannot do). Each task gets its own ENI
+        // with this SG; both the prod (443) and test (9443) listeners live on
+        // the same ALB SG, so a single ingress rule covers both.
+        const ecsTaskSecurityGroup = new cdk.aws_ec2.SecurityGroup(
+            this,
+            `${APPLICATION_NAME}-TaskSG`,
+            {
+                vpc,
+                description: `${APPLICATION_NAME} ECS task (awsvpc) Security Group`,
+                allowAllOutbound: true
+            }
+        );
+        ecsTaskSecurityGroup.addIngressRule(
+            albSecurityGroup,
+            cdk.aws_ec2.Port.tcp(3000),
+            "Allow app traffic from ALB to task ENIs"
         );
 
         const ecsInstanceRole = new Role(
@@ -271,7 +310,10 @@ export class EcsEc2Stack extends Stack {
             `${APPLICATION_NAME}-EcsEc2TaskDefinition-${props.stageName}`,
             {
                 executionRole: executionRole,
-                taskRole: ecsEc2Role.role
+                taskRole: ecsEc2Role.role,
+                // awsvpc + IP target groups are required for ECS native
+                // blue/green canary (blue & green task sets co-locate per host).
+                networkMode: NetworkMode.AWS_VPC
             }
         );
         const ORIGIN = props.isProd
@@ -280,7 +322,9 @@ export class EcsEc2Stack extends Stack {
 
         taskDefinition.addContainer("EcsEc2Container", {
             image: ContainerImage.fromEcrRepository(ecrRepoEcs, imageDigest),
-            portMappings: [{ containerPort: 3000, hostPort: 3000 }],
+            // awsvpc mode: the task ENI exposes the container port directly
+            // (no host-port remap), so hostPort must equal containerPort.
+            portMappings: [{ containerPort: 3000 }],
             memoryReservationMiB: 256,
             readonlyRootFilesystem: true,
             logging: LogDriver.awsLogs({
@@ -365,57 +409,11 @@ export class EcsEc2Stack extends Stack {
             }
         });
 
-        const service = new Ec2Service(this, `${APPLICATION_NAME}-Service-${props.stageName}`, {
-            cluster,
-            taskDefinition,
-            capacityProviderStrategies: [
-                {
-                    capacityProvider: capacityProvider.capacityProviderName,
-                    weight: 1
-                }
-            ],
-            circuitBreaker: {
-                rollback: true
-            },
-            minHealthyPercent: 50,
-            maxHealthyPercent: 200,
-            serviceName: `${APPLICATION_NAME}-ecs-ec2-${props.stageName}`,
-            placementStrategies: [PlacementStrategy.spreadAcrossInstances()],
-            deploymentController: {
-                type: DeploymentControllerType.ECS
-            }
-        });
-
-        const scaling = service.autoScaleTaskCount({
-            minCapacity: props.ecsTaskCapacity.min,
-            maxCapacity: props.ecsTaskCapacity.max
-        });
-
-        scaling.scaleOnCpuUtilization(`${APPLICATION_NAME}-EcsEc2CpuScaling-${props.stageName}`, {
-            targetUtilizationPercent: 60,
-            scaleInCooldown: Duration.seconds(300),
-            scaleOutCooldown: Duration.seconds(60)
-        });
-
-        scaling.scaleOnSchedule(`ScaleDownOvernight-${props.stageName}`, {
-            schedule: cdk.aws_applicationautoscaling.Schedule.cron({
-                minute: "0",
-                hour: "23"
-            }),
-            minCapacity: 1,
-            maxCapacity: 1,
-            timeZone: TimeZone.ETC_UTC
-        });
-
-        scaling.scaleOnSchedule(`RestoreMorningCapacity-${props.stageName}`, {
-            schedule: cdk.aws_applicationautoscaling.Schedule.cron({
-                minute: "0",
-                hour: "6"
-            }),
-            minCapacity: props.ecsTaskCapacity.min,
-            maxCapacity: props.ecsTaskCapacity.max,
-            timeZone: TimeZone.ETC_UTC
-        });
+        // NOTE: the ECS service is created further below, AFTER the ALB,
+        // blue/green target groups, listeners and the rollback alarm exist —
+        // ECS native blue/green canary needs the alternate target group, the
+        // production/test listener rules and the deploymentAlarm at service
+        // creation time. Task-count autoscaling is wired there too.
 
         asg.scaleOnCpuUtilization(`${APPLICATION_NAME}-EcsEc2AutoScalingGroup-${props.stageName}`, {
             targetUtilizationPercent: 60
@@ -502,37 +500,8 @@ export class EcsEc2Stack extends Stack {
         // Enable access logging for the ALB
         alb.logAccessLogs(albLogsBucket);
 
-        const listener = alb.addListener("PublicListener", {
-            protocol: ApplicationProtocol.HTTPS,
-            sslPolicy: SslPolicy.RECOMMENDED_TLS,
-            open: true,
-            certificates: [albCertificate]
-        });
-
-        // Attach ALB to ECS Service
-        listener.addTargets("ECS", {
-            // Keep <= 32 chars (ALB target group name limit); mirrors the ALB
-            // naming pattern so the dashboard can match it deterministically.
-            targetGroupName: `${APPLICATION_NAME}-tg-${props.stageName}`,
-            protocol: ApplicationProtocol.HTTP,
-            targets: [
-                service.loadBalancerTarget({
-                    containerName: "EcsEc2Container",
-                    containerPort: 3000
-                })
-            ],
-            // include health check (default is none)
-            healthCheck: {
-                interval: cdk.Duration.seconds(60),
-                path: "/health",
-                timeout: cdk.Duration.seconds(5),
-                healthyThresholdCount: 3,
-                unhealthyThresholdCount: 2
-            }
-        });
-
+        // API domain cert — attached to both listeners as an SNI certificate.
         const apiDomain = `api.ecs.${props.stageName}.${DOMAIN_NAME}`;
-
         const apiDomainCertificate = new Certificate(
             this,
             `${APPLICATION_NAME}-EcsEc2ApiCertificate-${props.stageName}`,
@@ -542,9 +511,195 @@ export class EcsEc2Stack extends Stack {
             }
         );
 
-        listener.addCertificates(`${APPLICATION_NAME}-ApiDomainCertificate-${props.stageName}`, [
-            apiDomainCertificate
-        ]);
+        // --- Blue/green target groups (awsvpc => IP targets) ---
+        const tgHealthCheck = {
+            path: "/health",
+            interval: cdk.Duration.seconds(60),
+            timeout: cdk.Duration.seconds(5),
+            healthyThresholdCount: 3,
+            unhealthyThresholdCount: 2
+        };
+
+        const blueTargetGroup = new ApplicationTargetGroup(
+            this,
+            `${APPLICATION_NAME}-BlueTG-${props.stageName}`,
+            {
+                vpc,
+                // Short, app-prefixed names: ALB target group names are capped
+                // at 32 chars, and "${APPLICATION_NAME}-tg-green-<stage>" overflows.
+                targetGroupName: `tgps-tg-blue-${props.stageName}`,
+                port: 3000,
+                protocol: ApplicationProtocol.HTTP,
+                targetType: TargetType.IP,
+                deregistrationDelay: Duration.seconds(60),
+                healthCheck: tgHealthCheck
+            }
+        );
+
+        const greenTargetGroup = new ApplicationTargetGroup(
+            this,
+            `${APPLICATION_NAME}-GreenTG-${props.stageName}`,
+            {
+                vpc,
+                targetGroupName: `tgps-tg-green-${props.stageName}`,
+                port: 3000,
+                protocol: ApplicationProtocol.HTTP,
+                targetType: TargetType.IP,
+                deregistrationDelay: Duration.seconds(60),
+                healthCheck: tgHealthCheck
+            }
+        );
+
+        // --- Production listener (443): serves blue; ECS shifts traffic to
+        // green during a deployment via the production listener rule. ---
+        const listener = alb.addListener("PublicListener", {
+            protocol: ApplicationProtocol.HTTPS,
+            sslPolicy: SslPolicy.RECOMMENDED_TLS,
+            open: true,
+            certificates: [albCertificate, apiDomainCertificate],
+            defaultTargetGroups: [blueTargetGroup]
+        });
+
+        const prodListenerRule = new ApplicationListenerRule(
+            this,
+            `${APPLICATION_NAME}-ProdListenerRule-${props.stageName}`,
+            {
+                listener,
+                priority: 1,
+                targetGroups: [blueTargetGroup],
+                conditions: [ListenerCondition.pathPatterns(["/*"])]
+            }
+        );
+
+        // --- Test listener (9443): routes to green for pre-cutover validation.
+        // open:false — ingress is restricted to the VPC on albSecurityGroup. ---
+        const testListener = alb.addListener("TestListener", {
+            port: 9443,
+            protocol: ApplicationProtocol.HTTPS,
+            sslPolicy: SslPolicy.RECOMMENDED_TLS,
+            open: false,
+            certificates: [albCertificate, apiDomainCertificate],
+            defaultTargetGroups: [greenTargetGroup]
+        });
+
+        const testListenerRule = new ApplicationListenerRule(
+            this,
+            `${APPLICATION_NAME}-TestListenerRule-${props.stageName}`,
+            {
+                listener: testListener,
+                priority: 1,
+                targetGroups: [greenTargetGroup],
+                conditions: [ListenerCondition.pathPatterns(["/*"])]
+            }
+        );
+
+        // --- Rollback alarm: target 5XX on the GREEN task set during a canary.
+        // Must exist before the service so deploymentAlarms can reference it. ---
+        const greenHighErrorRateAlarm = new cdk.aws_cloudwatch.Alarm(
+            this,
+            `${APPLICATION_NAME}-GreenHigh5XXAlarm-${props.stageName}`,
+            {
+                alarmName: `${APPLICATION_NAME}-ecs-green-5xx-${props.stageName}`,
+                alarmDescription:
+                    "High target 5XX on the green task set during a canary deployment",
+                metric: new cdk.aws_cloudwatch.Metric({
+                    namespace: "AWS/ApplicationELB",
+                    metricName: "HTTPCode_Target_5XX_Count",
+                    dimensionsMap: {
+                        LoadBalancer: alb.loadBalancerFullName,
+                        TargetGroup: greenTargetGroup.targetGroupFullName
+                    },
+                    statistic: "Sum",
+                    period: cdk.Duration.minutes(1)
+                }),
+                threshold: 3,
+                evaluationPeriods: 3,
+                comparisonOperator: cdk.aws_cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+                treatMissingData: cdk.aws_cloudwatch.TreatMissingData.NOT_BREACHING
+            }
+        );
+
+        // --- ECS service: native blue/green CANARY deployment ---
+        const service = new Ec2Service(this, `${APPLICATION_NAME}-Service-${props.stageName}`, {
+            cluster,
+            taskDefinition,
+            serviceName: `${APPLICATION_NAME}-ecs-ec2-${props.stageName}`,
+            capacityProviderStrategies: [
+                {
+                    capacityProvider: capacityProvider.capacityProviderName,
+                    weight: 1
+                }
+            ],
+            // awsvpc task ENI SG (allows app traffic from the ALB).
+            securityGroups: [ecsTaskSecurityGroup],
+            // Keep blue at full capacity while green spins up alongside it.
+            minHealthyPercent: 100,
+            maxHealthyPercent: 200,
+            placementStrategies: [PlacementStrategy.spreadAcrossInstances()],
+            deploymentController: {
+                type: DeploymentControllerType.ECS
+            },
+            deploymentStrategy: DeploymentStrategy.CANARY,
+            canaryConfiguration: {
+                stepPercent: 20,
+                stepBakeTime: Duration.minutes(10)
+            },
+            bakeTime: Duration.minutes(2),
+            deploymentAlarms: {
+                alarmNames: [greenHighErrorRateAlarm.alarmName],
+                behavior: AlarmBehavior.ROLLBACK_ON_ALARM
+            }
+        });
+
+        // Wire the service to blue (production) and green (alternate) target
+        // groups via the production + test listener rules.
+        const lbTarget = service.loadBalancerTarget({
+            containerName: "EcsEc2Container",
+            containerPort: 3000,
+            alternateTarget: new AlternateTarget(
+                `${APPLICATION_NAME}-AltTarget-${props.stageName}`,
+                {
+                    alternateTargetGroup: greenTargetGroup,
+                    productionListener:
+                        ListenerRuleConfiguration.applicationListenerRule(prodListenerRule),
+                    testListener:
+                        ListenerRuleConfiguration.applicationListenerRule(testListenerRule)
+                }
+            )
+        });
+        lbTarget.attachToApplicationTargetGroup(blueTargetGroup);
+
+        // --- Task-count autoscaling (depends on the service) ---
+        const scaling = service.autoScaleTaskCount({
+            minCapacity: props.ecsTaskCapacity.min,
+            maxCapacity: props.ecsTaskCapacity.max
+        });
+
+        scaling.scaleOnCpuUtilization(`${APPLICATION_NAME}-EcsEc2CpuScaling-${props.stageName}`, {
+            targetUtilizationPercent: 60,
+            scaleInCooldown: Duration.seconds(300),
+            scaleOutCooldown: Duration.seconds(60)
+        });
+
+        scaling.scaleOnSchedule(`ScaleDownOvernight-${props.stageName}`, {
+            schedule: cdk.aws_applicationautoscaling.Schedule.cron({
+                minute: "0",
+                hour: "23"
+            }),
+            minCapacity: 1,
+            maxCapacity: 1,
+            timeZone: TimeZone.ETC_UTC
+        });
+
+        scaling.scaleOnSchedule(`RestoreMorningCapacity-${props.stageName}`, {
+            schedule: cdk.aws_applicationautoscaling.Schedule.cron({
+                minute: "0",
+                hour: "6"
+            }),
+            minCapacity: props.ecsTaskCapacity.min,
+            maxCapacity: props.ecsTaskCapacity.max,
+            timeZone: TimeZone.ETC_UTC
+        });
 
         // Create Route53 A record for API domain pointing directly to ALB
         new ARecord(this, `${APPLICATION_NAME}-EcsEc2ApiRecord-${props.stageName}`, {
