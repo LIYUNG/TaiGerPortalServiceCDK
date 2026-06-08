@@ -331,7 +331,8 @@ export class EcsEc2Stack extends Stack {
                 logGroup: logGroup
             }),
             environment: {
-                ORIGIN: ORIGIN
+                ORIGIN: ORIGIN,
+                AWS_REGION: props.env?.region || "us-east-1"
             },
             secrets: {
                 // Add SSM parameters as environment variables
@@ -380,7 +381,6 @@ export class EcsEc2Stack extends Stack {
                     "AWS_S3_DATAPIPELINE_TENFOLDAI_SNAPSHOT"
                 ),
                 AWS_S3_BUCKET_NAME: Secret.fromSecretsManager(secret, "AWS_S3_BUCKET_NAME"),
-                AWS_REGION: Secret.fromSecretsManager(secret, "AWS_REGION"),
                 AWS_TRANSCRIPT_ANALYSER_ROLE: Secret.fromSecretsManager(
                     secret,
                     "AWS_TRANSCRIPT_ANALYSER_ROLE"
