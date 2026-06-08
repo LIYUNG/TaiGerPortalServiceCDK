@@ -22,7 +22,7 @@ import {
 } from "../configuration/dependencies";
 import { PipelineAppStage } from "../lib/app-stage";
 import { Region, STAGES } from "../constants";
-import { LinuxBuildImage } from "aws-cdk-lib/aws-codebuild";
+import { BuildSpec, LinuxArmBuildImage, LinuxBuildImage } from "aws-cdk-lib/aws-codebuild";
 import { CfnReplicationConfiguration, Repository, TagMutability } from "aws-cdk-lib/aws-ecr";
 import { BlockPublicAccess, Bucket, BucketEncryption } from "aws-cdk-lib/aws-s3";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
@@ -106,8 +106,21 @@ export class TaiGerPortalServicePipelineStack extends Stack {
             },
             commands: ["npm ci", "npm run test:ci", "rm -rf node_modules"],
             // commands: ["echo 'Unit Test'"],
+            // Pin Node 20: the AL2 ARM:3.0 image defaults to Node 18, which the
+            // AWS SDK for JavaScript v3 deprecates (drops support Jan 2026). The
+            // AL2023 ARM image ships Node 18/20/22; select 20 explicitly.
+            partialBuildSpec: BuildSpec.fromObject({
+                version: "0.2",
+                phases: {
+                    install: {
+                        "runtime-versions": {
+                            nodejs: 22
+                        }
+                    }
+                }
+            }),
             buildEnvironment: {
-                buildImage: LinuxBuildImage.AMAZON_LINUX_2_ARM_3 // make sure it matches the requested image platform.
+                buildImage: LinuxArmBuildImage.AMAZON_LINUX_2023_STANDARD_3_0 // make sure it matches the requested image platform.
             }
         });
 
